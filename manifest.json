@@ -1,11 +1,11 @@
 {
-    "display_name": "WorldInfoDrawer",
+    "display_name": "WIDrawer Lazuli",
     "loading_order": 100,
     "requires": [],
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "LenAnderson",
+    "author": "Lazuli",
     "version": "1.4.2",
-    "homePage": "https://github.com/LenAnderson/SillyTavern-WorldInfoDrawer"
+    "homePage": "https://github.com/lazuli-s/SillyTavern-WIDrawer_Lazuli"
 }
