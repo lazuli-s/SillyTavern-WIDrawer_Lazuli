@@ -89,6 +89,7 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
     sortDirection ??= Settings.instance.sortDirection;
     const x = (y)=>y.data ?? y;
     let result;
+    let shouldReverse = true;
     switch (sortLogic) {
         case SORT.ALPHABETICAL: {
             result = entries.toSorted((a,b)=>(x(a).comment || x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment || x(b).key.join(', ')).toLowerCase()));
@@ -106,12 +107,28 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
             });
             break;
         }
+        case SORT.ORDER: {
+            shouldReverse = false;
+            result = entries.toSorted((a,b)=>{
+                const getOrder = (entry)=>Number.isFinite(entry.order) ? entry.order : null;
+                const oa = getOrder(x(a));
+                const ob = getOrder(x(b));
+                const direction = sortDirection == SORT_DIRECTION.DESCENDING ? -1 : 1;
+                if (oa !== null && ob !== null && oa !== ob) {
+                    return direction * (oa - ob);
+                }
+                if (oa !== null && ob === null) return -1;
+                if (oa === null && ob !== null) return 1;
+                return (x(a).comment ?? x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment ?? x(b).key.join(', ')).toLowerCase());
+            });
+            break;
+        }
         default: {
             result = [...entries];
             break;
         }
     }
-    if (sortDirection == SORT_DIRECTION.DESCENDING) result.reverse();
+    if (shouldReverse && sortDirection == SORT_DIRECTION.DESCENDING) result.reverse();
     return result;
 };
 
@@ -1450,6 +1467,8 @@ const addDrawer = ()=>{
                             ['Title ↘', SORT.ALPHABETICAL, SORT_DIRECTION.DESCENDING],
                             ['Prompt ↗', SORT.PROMPT, SORT_DIRECTION.ASCENDING],
                             ['Prompt ↘', SORT.PROMPT, SORT_DIRECTION.DESCENDING],
+                            ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
+                            ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
                         ];
                         for (const [label, sort, direction] of opts) {
                             const opt = document.createElement('option'); {
