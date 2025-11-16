@@ -489,3 +489,133 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   padding-left: 0.5em;
   font-size: small;
 }
+
+:root {
+  --wi-shared-width: 90%;
+}
+
+#WIEntryHeaderTitlesPC {
+  width: 90% !important;
+}
+
+@media (max-width: 768px) {
+  body #WorldInfo > .stwid--body {
+    display: none;
+    overflow: hidden !important;
+  }
+
+  body.stwid-- #WorldInfo.openDrawer {
+    flex-direction: column;
+    overflow: hidden;
+    display: flex !important;
+  }
+
+  body.stwid-- #WorldInfo > .stwid--body {
+    overflow: hidden;
+    flex-direction: column !important;
+    height: 100% !important;
+  }
+
+  body.stwid-- #WorldInfo .stwid--list {
+    width: 100% !important;
+    max-height: 40vh !important;
+    overflow-y: auto !important;
+  }
+
+  body.stwid-- #WorldInfo .stwid--editor {
+    overflow-y: auto !important;
+    background: var(--customBgColor2);
+  }
+
+  .wi-card-entry {
+    background: none !important;
+  }
+
+  body.stwid-- #WorldInfo .stwid--list .stwid--books .stwid--book .stwid--head {
+    position: static !important;
+  }
+
+  .inline-drawer-header {
+    padding: 5px 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-content: flex-start !important;
+  }
+
+  .WIEnteryHeaderControls.flex-container {
+    display: flex !important;
+    gap: 5px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+
+  .world_entry_thin_controls {
+    display: flex !important;
+    gap: 20px !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    width: 90vw !important;
+  }
+
+  .world_entry .inline-drawer-header {
+    padding: 5px 1px !important;
+  }
+
+  .world_entry .killSwitch.fa-toggle-on {
+    font-size: 1.5em;
+  }
+
+  div[name="keywordsAndLogicBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.3em !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  .world_entry_form_control.keyprimary.flex1,
+  .world_entry_form_control.keysecondary.flex1 {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  textarea.text_pole.keyprimarytextpole.mobile,
+  textarea.text_pole.keysecondarytextpole.mobile {
+    width: 100% !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+    height: 20px !important;
+  }
+
+  .flex4.flex-container.flexFlowColumn.flexNoGap {
+    display: flex !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .flex-container.justifySpaceBetween {
+    align-items: center !important;
+  }
+
+  @media (pointer: coarse) {
+    input[type="checkbox"],
+    input[type="radio"] {
+      transform: scale(1);
+    }
+  }
+
+  body.stwid-- #WorldInfo .stwid--list .stwid--books .stwid--book .stwid--entry .stwid--status .stwid--enabled {
+    font-size: 1.4em;
+  }
+}
+
+@media screen and (max-width: 1000px) {
+  .inline-drawer-content {
+    padding: 0px !important;
+  }
+}
