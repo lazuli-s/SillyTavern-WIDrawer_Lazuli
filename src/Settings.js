@@ -11,6 +11,8 @@ export const SORT = {
     PROMPT: 'prompt',
     /** By numeric order value */
     ORDER: 'order',
+    /** By numeric UID */
+    UID: 'uid',
 };
 /** @readonly */
 /** @enum {string} */
