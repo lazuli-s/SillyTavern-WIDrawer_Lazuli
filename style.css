@@ -277,7 +277,7 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
 .stwid--blocker {
   position: fixed;
   inset: 0;
-  z-index: 30000;
+  z-index: 40000;
 }
 .stwid--blocker .stwid--menu {
   position: fixed;
@@ -286,7 +286,7 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   position-try-fallbacks: flip-block, flip-inline;
   margin-top: -1lh;
   filter: drop-shadow(1px 1px 2px var(--black50a));
-  z-index: 30000;
+  z-index: 40000;
   overflow-x: clip;
   overflow-y: auto;
   border-radius: 10px;

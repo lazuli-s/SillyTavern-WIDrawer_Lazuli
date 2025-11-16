@@ -299,21 +299,21 @@ body.stwid-- #WorldInfo {
 
 
 .stwid--blocker {
-	position: fixed;
-	inset: 0;
-	z-index: 30000;
-	.stwid--menu {
-		position: fixed;
-		position-anchor: --stwid--ctxAnchor;
-		position-area: bottom right;
-		position-try-fallbacks: flip-block, flip-inline;
+        position: fixed;
+        inset: 0;
+        z-index: 40000;
+        .stwid--menu {
+                position: fixed;
+                position-anchor: --stwid--ctxAnchor;
+                position-area: bottom right;
+                position-try-fallbacks: flip-block, flip-inline;
 
-		margin-top: -1lh;
-		filter: drop-shadow(1px 1px 2px var(--black50a));
-		z-index: 30000;
-		overflow-x: clip;
-		overflow-y: auto;
-		border-radius: 10px;
+                margin-top: -1lh;
+                filter: drop-shadow(1px 1px 2px var(--black50a));
+                z-index: 40000;
+                overflow-x: clip;
+                overflow-y: auto;
+                border-radius: 10px;
 		display: flex;
 		flex-direction: column;
 		background-color: var(--secondaryBg, var(--SmartThemeBlurTintColor));
