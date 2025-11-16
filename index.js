@@ -123,6 +123,23 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
             });
             break;
         }
+        case SORT.UID: {
+            shouldReverse = false;
+            result = entries.toSorted((a,b)=>{
+                const direction = sortDirection == SORT_DIRECTION.DESCENDING ? -1 : 1;
+                const ua = Number(x(a).uid);
+                const ub = Number(x(b).uid);
+                const hasUa = Number.isFinite(ua);
+                const hasUb = Number.isFinite(ub);
+                if (hasUa && hasUb && ua !== ub) {
+                    return direction * (ua - ub);
+                }
+                if (hasUa && !hasUb) return -1;
+                if (!hasUa && hasUb) return 1;
+                return (x(a).comment ?? x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment ?? x(b).key.join(', ')).toLowerCase());
+            });
+            break;
+        }
         default: {
             result = [...entries];
             break;
@@ -1469,6 +1486,8 @@ const addDrawer = ()=>{
                             ['Prompt ↘', SORT.PROMPT, SORT_DIRECTION.DESCENDING],
                             ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
                             ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
+                            ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
+                            ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
                         ];
                         for (const [label, sort, direction] of opts) {
                             const opt = document.createElement('option'); {
