@@ -9,6 +9,10 @@ export const SORT = {
     ALPHABETICAL: 'alphabetical',
     /** According to prompt depth (position-depth-order) */
     PROMPT: 'prompt',
+    /** By numeric order value */
+    ORDER: 'order',
+    /** By token count */
+    TOKENS: 'tokens',
 };
 /** @readonly */
 /** @enum {string} */
