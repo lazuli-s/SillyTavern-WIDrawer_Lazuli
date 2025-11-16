@@ -303,6 +303,22 @@ const updateWIChange = async(name = null, data = null)=>{
 };
 const updateWIChangeDebounced = debounce(updateWIChange);
 
+const fillEmptyTitlesWithKeywords = async(name)=>{
+    const data = await loadWorldInfo(name);
+    let hasUpdates = false;
+    for (const entry of Object.values(data.entries)) {
+        const hasTitle = Boolean(entry.comment?.trim());
+        if (hasTitle) continue;
+        const keywords = Array.isArray(entry.key) ? entry.key.map(it=>it?.trim()).filter(Boolean) : [];
+        if (keywords.length === 0) continue;
+        entry.comment = keywords.join(', ');
+        hasUpdates = true;
+    }
+    if (!hasUpdates) return;
+    await saveWorldInfo(name, data, true);
+    updateWIChange(name, data);
+};
+
 eventSource.on(event_types.WORLDINFO_UPDATED, (name, world)=>updateWIChangeDebounced(name, world));
 eventSource.on(event_types.WORLDINFO_SETTINGS_UPDATED, ()=>updateSettingsChange());
 
@@ -583,6 +599,24 @@ const renderBook = async(name, before = null, bookData = null)=>{
                                         }
                                         menu.append(editor);
                                     }
+                                }
+                                const fillTitles = document.createElement('div'); {
+                                    fillTitles.classList.add('stwid--item');
+                                    fillTitles.classList.add('stwid--fillTitles');
+                                    fillTitles.addEventListener('click', async()=>{
+                                        await fillEmptyTitlesWithKeywords(name);
+                                    });
+                                    const i = document.createElement('i'); {
+                                        i.classList.add('stwid--icon');
+                                        i.classList.add('fa-solid', 'fa-fw', 'fa-wand-magic-sparkles');
+                                        fillTitles.append(i);
+                                    }
+                                    const txt = document.createElement('span'); {
+                                        txt.classList.add('stwid--label');
+                                        txt.textContent = 'Fill Empty Titles';
+                                        fillTitles.append(txt);
+                                    }
+                                    menu.append(fillTitles);
                                 }
                                 const exp = document.createElement('div'); {
                                     exp.classList.add('stwid--item');
