@@ -84,6 +84,16 @@ const entryState = function(entry) {
         return 'normal';
     }
 };
+const createResolver = ()=>{
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej)=>{
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve, reject };
+};
+
 const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
     sortLogic ??= Settings.instance.sortLogic;
     sortDirection ??= Settings.instance.sortDirection;
@@ -177,12 +187,11 @@ const updateSettingsChange = ()=>{
         }
     }
 };
-let updateWIChangeStarted = Promise.withResolvers();
-/**@type {PromiseWithResolvers<any>} */
-let updateWIChangeFinished;
+let updateWIChangeStarted = createResolver();
+let updateWIChangeFinished = createResolver();
 const updateWIChange = async(name = null, data = null)=>{
     console.log('[STWID]', '[UPDATE-WI]', name, data);
-    updateWIChangeFinished = Promise.withResolvers();
+    updateWIChangeFinished = createResolver();
     updateWIChangeStarted.resolve();
     // removed books
     for (const [n, w] of Object.entries(cache)) {
@@ -298,7 +307,7 @@ const updateWIChange = async(name = null, data = null)=>{
             sortEntriesIfNeeded(name);
         }
     }
-    updateWIChangeStarted = Promise.withResolvers();
+    updateWIChangeStarted = createResolver();
     updateWIChangeFinished.resolve();
 };
 const updateWIChangeDebounced = debounce(updateWIChange);
@@ -959,10 +968,13 @@ const addDrawer = ()=>{
                                 if (created) {
                                     await startPromise;
                                     await updateWIChangeFinished.promise;
-                                    cache[finalName].dom.entryList.classList.remove('stwid--isCollapsed');
-                                    cache[name].dom.collapseToggle.classList.add('fa-chevron-up');
-                                    cache[name].dom.collapseToggle.classList.remove('fa-chevron-down');
-                                    cache[finalName].dom.root.scrollIntoView({ block:'center', inline:'center' });
+                                    const newBook = cache[finalName];
+                                    if (newBook) {
+                                        newBook.dom.entryList.classList.remove('stwid--isCollapsed');
+                                        newBook.dom.collapseToggle.classList.add('fa-chevron-up');
+                                        newBook.dom.collapseToggle.classList.remove('fa-chevron-down');
+                                        newBook.dom.root.scrollIntoView({ block:'center', inline:'center' });
+                                    }
                                 }
                             }
                         });
