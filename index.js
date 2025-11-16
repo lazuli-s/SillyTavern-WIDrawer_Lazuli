@@ -904,6 +904,7 @@ const addDrawer = ()=>{
     const holder = document.querySelector('#wi-holder');
     const drawerContent = document.querySelector('#WorldInfo'); {
         let searchEntriesInput;
+        let searchInput;
         const body = document.createElement('div'); {
             dom.drawer.body = body;
             body.classList.add('stwid--body');
@@ -941,6 +942,24 @@ const addDrawer = ()=>{
                             /**@type {HTMLInputElement}*/(document.querySelector('#world_import_file')).click();
                         });
                         controls.append(imp);
+                    }
+                    const refresh = document.createElement('div'); {
+                        refresh.classList.add('menu_button');
+                        refresh.classList.add('fa-solid', 'fa-fw', 'fa-arrows-rotate');
+                        refresh.title = 'Refresh';
+                        refresh.addEventListener('click', async()=>{
+                            dom.drawer.body.classList.add('stwid--isLoading');
+                            dom.editor.innerHTML = '';
+                            currentEditor = null;
+                            for (const key of Object.keys(cache)) delete cache[key];
+                            try {
+                                await loadListDebounced();
+                                searchInput?.dispatchEvent(new Event('input'));
+                            } finally {
+                                dom.drawer.body.classList.remove('stwid--isLoading');
+                            }
+                        });
+                        controls.append(refresh);
                     }
                     const settings = document.createElement('div'); {
                         dom.activationToggle = settings;
@@ -1451,6 +1470,7 @@ const addDrawer = ()=>{
                         search.classList.add('text_pole');
                         search.type = 'search';
                         search.placeholder = 'Search books';
+                        searchInput = search;
                         search.addEventListener('input', ()=>{
                             const query = search.value.toLowerCase();
                             for (const b of Object.keys(cache)) {
