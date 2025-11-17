@@ -339,6 +339,461 @@ export const jumpToEntry = async(name, uid)=>{
     }
 };
 
+const renderOrderHelper = (book = null)=>{
+    dom.editor.innerHTML = '';
+    currentEditor = null;
+    if (dom.activationToggle.classList.contains('stwid--active')) {
+        dom.activationToggle.click();
+    }
+    for (const cb of Object.values(cache)) {
+        for (const ce of Object.values(cb.dom.entry)) {
+            ce.root.classList.remove('stwid--active');
+        }
+    }
+    dom.order.entries = {};
+    dom.order.filter.root = undefined;
+    dom.order.filter.preview = undefined;
+    dom.order.tbody = undefined;
+
+    const entries = sortEntries(
+        Object.entries(cache)
+            .filter(([name])=>selected_world_info.includes(name))
+            .map(([name,data])=>Object.values(data.entries).map(it=>({ book:name, data:it })))
+            .flat(),
+        SORT.PROMPT,
+        SORT_DIRECTION.ASCENDING,
+    ).filter((entry)=>!book || entry.book === book);
+    const body = document.createElement('div'); {
+        body.classList.add('stwid--orderHelper');
+        const actions = document.createElement('div'); {
+            actions.classList.add('stwid--actions');
+            const filterToggle = document.createElement('div'); {
+                filterToggle.classList.add('menu_button');
+                filterToggle.classList.add('fa-solid', 'fa-fw', 'fa-filter');
+                filterToggle.title = 'Filter entries\n---\nOrder will only be applied to unfiltered entries';
+                filterToggle.addEventListener('click', ()=>{
+                    const is = dom.order.filter.root.classList.toggle('stwid--active');
+                    if (is) {
+                        if (entries.length) {
+                            dom.order.filter.preview.textContent = JSON.stringify(Object.assign({ book:entries[0].book }, entries[0].data), null, 2);
+                        }
+                    }
+                });
+                actions.append(filterToggle);
+            }
+            const startLbl = document.createElement('label'); {
+                startLbl.classList.add('stwid--inputWrap');
+                startLbl.title = 'Starting Order (topmost entry in list)';
+                startLbl.append('Start: ');
+                const start = document.createElement('input'); {
+                    dom.order.start = start;
+                    start.classList.add('stwid--input');
+                    start.classList.add('text_pole');
+                    start.type = 'number';
+                    start.min = '1';
+                    start.max = '10000';
+                    start.value = localStorage.getItem('stwid--order-start') ?? '100';
+                    start.addEventListener('change', ()=>{
+                        localStorage.setItem('stwid--order-start', start.value);
+                    });
+                    startLbl.append(start);
+                }
+                actions.append(startLbl);
+            }
+            const stepLbl = document.createElement('label'); {
+                stepLbl.classList.add('stwid--inputWrap');
+                stepLbl.append('Spacing: ');
+                const step = document.createElement('input'); {
+                    dom.order.step = step;
+                    step.classList.add('stwid--input');
+                    step.classList.add('text_pole');
+                    step.type = 'number';
+                    step.min = '1';
+                    step.max = '10000';
+                    step.value = localStorage.getItem('stwid--order-step') ?? '10';
+                    step.addEventListener('change', ()=>{
+                        localStorage.setItem('stwid--order-step', step.value);
+                    });
+                    stepLbl.append(step);
+                }
+                actions.append(stepLbl);
+            }
+            const dir = document.createElement('div'); {
+                dir.classList.add('stwid--inputWrap');
+                dir.append('Direction: ');
+                const wrap = document.createElement('div'); {
+                    wrap.classList.add('stwid--toggleWrap');
+                    const up = document.createElement('label'); {
+                        up.classList.add('stwid--inputWrap');
+                        up.title = 'Start at the bottom of the list';
+                        const inp = document.createElement('input'); {
+                            dom.order.direction.up = inp;
+                            inp.type = 'radio';
+                            inp.checked = (localStorage.getItem('stwid--order-direction') ?? 'down') == 'up';
+                            inp.addEventListener('click', ()=>{
+                                inp.checked = true;
+                                dom.order.direction.down.checked = false;
+                                apply.classList.remove('fa-arrow-down-1-9');
+                                apply.classList.add('fa-arrow-up-9-1');
+                                localStorage.setItem('stwid--order-direction', 'up');
+                            });
+                            up.append(inp);
+                        }
+                        up.append('up');
+                        wrap.append(up);
+                    }
+                    const down = document.createElement('label'); {
+                        down.classList.add('stwid--inputWrap');
+                        down.title = 'Start at the top of the list';
+                        const inp = document.createElement('input'); {
+                            dom.order.direction.down = inp;
+                            inp.type = 'radio';
+                            inp.checked = (localStorage.getItem('stwid--order-direction') ?? 'down') == 'down';
+                            inp.addEventListener('click', ()=>{
+                                inp.checked = true;
+                                dom.order.direction.up.checked = false;
+                                apply.classList.add('fa-arrow-down-1-9');
+                                apply.classList.remove('fa-arrow-up-9-1');
+                                localStorage.setItem('stwid--order-direction', 'down');
+                            });
+                            down.append(inp);
+                        }
+                        down.append('down');
+                        wrap.append(down);
+                    }
+                    dir.append(wrap);
+                }
+                actions.append(dir);
+            }
+            const apply = document.createElement('div'); {
+                apply.classList.add('menu_button');
+                apply.classList.add('fa-solid', 'fa-fw');
+                if ((localStorage.getItem('stwid--order-direction') ?? 'down') == 'up') {
+                    apply.classList.add('fa-arrow-up-9-1');
+                } else {
+                    apply.classList.add('fa-arrow-down-1-9');
+                }
+                apply.title = 'Apply current sorting as Order';
+                apply.addEventListener('click', async()=>{
+                    const start = parseInt(dom.order.start.value);
+                    const step = parseInt(dom.order.step.value);
+                    const up = dom.order.direction.up.checked;
+                    let order = start;
+                    let rows = [...dom.order.tbody.children];
+                    const books = [];
+                    if (up) rows.reverse();
+                    for (const tr of rows) {
+                        if (tr.classList.contains('stwid--isFiltered')) continue;
+                        const bookName = tr.getAttribute('data-book');
+                        const uid = tr.getAttribute('data-uid');
+                        if (!books.includes(bookName)) books.push(bookName);
+                        cache[bookName].entries[uid].order = order;
+                        /**@type {HTMLInputElement}*/(tr.querySelector('[name="order"]')).value = order.toString();
+                        order += step;
+                    }
+                    for (const bookName of books) {
+                        await saveWorldInfo(bookName, { entries:cache[bookName].entries }, true);
+                    }
+                });
+                actions.append(apply);
+            }
+            body.append(actions);
+        }
+        const filter = document.createElement('div'); {
+            dom.order.filter.root = filter;
+            filter.classList.add('stwid--filter');
+            const main = document.createElement('div'); {
+                main.classList.add('stwid--main');
+                const hint = document.createElement('div'); {
+                    hint.classList.add('stwid--hint');
+                    const bookContextHint = book ? `<br>Book context: <code>${book}</code> (entries are scoped to this book).` : '';
+                    hint.innerHTML = `
+                        Script will be called for each entry in all active books.
+                        Every entry for which the script returns <code>true</code> will be kept.
+                        Other entries will be filtered out.
+                        <br>
+                        Use <code>{{var::entry}}</code> to access the entry and its properties (look
+                        right for available fields).
+                        ${bookContextHint}
+                    `;
+                    main.append(hint);
+                }
+                const script = document.createElement('div'); {
+                    script.classList.add('stwid--script');
+                    const syntax = document.createElement('pre'); {
+                        syntax.classList.add('stwid--syntax');
+                        script.append(syntax);
+                    }
+                    const overlay = document.createElement('div'); {
+                        overlay.classList.add('stwid--overlay');
+                        script.append(overlay);
+                    }
+                    const inp = document.createElement('textarea'); {
+                        const defaultFilter = '{{var::entry}}';
+                        inp.classList.add('stwid--input');
+                        inp.classList.add('text_pole');
+                        inp.name = 'filter';
+                        inp.value = localStorage.getItem('stwid--order-filter') ?? defaultFilter;
+                        let filterStack = [];
+                        const updateScroll = ()=>{
+                            const scrollTop = inp.scrollTop;
+                            syntax.scrollTop = scrollTop;
+                        };
+                        const updateScrollDebounced = debounce(()=>updateScroll(), 150);
+                        const updateList = async()=>{
+                            if (!dom.order.filter.root.classList.contains('stwid--active')) return;
+                            const closure = new (await SlashCommandParser.getScope())();
+                            filterStack.push(closure);
+                            const clone = inp.value;
+                            const script = `return async function orderHelperFilter(data) {${clone}}();`;
+                            try {
+                                await closure.compile(script);
+                                const entries = sortEntries(
+                                    Object.entries(dom.order.entries)
+                                        .map(([book,entries])=>Object.values(entries).map(tr=>({
+                                            book,
+                                            dom:tr,
+                                            data:cache[book].entries[tr.getAttribute('data-uid')],
+                                        })))
+                                        .flat(),
+                                    SORT.PROMPT,
+                                    SORT_DIRECTION.ASCENDING,
+                                );
+                                for (const e of entries) {
+                                    dom.order.entries[e.book][e.data.uid].classList.remove('stwid--isFiltered');
+                                    dom.order.entries[e.book][e.data.uid].classList.add('stwid--isFiltered');
+                                }
+                                for (const e of entries) {
+                                    closure.scope.setVariable('entry', JSON.stringify(Object.assign({ book:e.book }, e.data)));
+                                    const result = (await closure.execute()).pipe;
+                                    if (filterStack.at(-1) != closure) {
+                                        filterStack.splice(filterStack.indexOf(closure), 1);
+                                        return;
+                                    }
+                                    if (isTrueBoolean(result)) {
+                                        dom.order.entries[e.book][e.data.uid].classList.remove('stwid--isFiltered');
+                                    } else {
+                                        dom.order.entries[e.book][e.data.uid].classList.add('stwid--isFiltered');
+                                    }
+                                }
+                                filterStack.splice(filterStack.indexOf(closure), 1);
+                            } catch { /* empty */ }
+                        };
+                        const updateListDebounced = debounce(()=>updateList(), 1000);
+                        inp.addEventListener('input', () => {
+                            syntax.innerHTML = hljs.highlight(`${inp.value}${inp.value.slice(-1) == '\n' ? ' ' : ''}`, { language:'stscript', ignoreIllegals:true })?.value;
+                            updateScrollDebounced();
+                            updateListDebounced();
+                        });
+                        inp.addEventListener('scroll', ()=>{
+                            updateScrollDebounced();
+                        });
+                        inp.style.color = 'transparent';
+                        inp.style.background = 'transparent';
+                        inp.style.setProperty('text-shadow', 'none', 'important');
+                        syntax.innerHTML = hljs.highlight(`${inp.value}${inp.value.slice(-1) == '\n' ? ' ' : ''}`, { language:'stscript', ignoreIllegals:true })?.value;
+                        script.append(inp);
+                    }
+                    main.append(script);
+                }
+                filter.append(main);
+            }
+            const preview = document.createElement('div'); {
+                dom.order.filter.preview = preview;
+                preview.classList.add('stwid--preview');
+                filter.append(preview);
+            }
+            body.append(filter);
+        }
+        const wrap = document.createElement('div'); {
+            wrap.classList.add('stwid--orderTableWrap');
+            const tbl = document.createElement('table'); {
+                tbl.classList.add('stwid--orderTable');
+                const thead = document.createElement('thead'); {
+                    const tr = document.createElement('tr'); {
+                        for (const col of ['', '', 'Entry', 'Strat', 'Position', 'Depth', 'Order', 'Trigg %']) {
+                            const th = document.createElement('th'); {
+                                th.textContent = col;
+                                tr.append(th);
+                            }
+                        }
+                        thead.append(tr);
+                    }
+                    tbl.append(thead);
+                }
+                const tbody = document.createElement('tbody'); {
+                    dom.order.tbody = tbody;
+                    $(tbody).sortable({
+                        // handle: 'stwid--sortableHandle',
+                        delay: getSortableDelay(),
+                    });
+                    for (const e of entries) {
+                        const tr = document.createElement('tr'); {
+                            tr.setAttribute('data-book', e.book);
+                            tr.setAttribute('data-uid', e.data.uid);
+                            if (!dom.order.entries[e.book]) {
+                                dom.order.entries[e.book] = {};
+                            }
+                            dom.order.entries[e.book][e.data.uid] = tr;
+                            const handle = document.createElement('td'); {
+                                const i = document.createElement('div'); {
+                                    i.classList.add('stwid--sortableHandle');
+                                    i.textContent = '☰';
+                                    handle.append(i);
+                                }
+                                tr.append(handle);
+                            }
+                            const active = document.createElement('td'); {
+                                const isEnabled = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="entryKillSwitch"]').cloneNode(true)); {
+                                    isEnabled.classList.add('stwid--enabled');
+                                    if (e.data.disable) {
+                                        isEnabled.classList.toggle('fa-toggle-off');
+                                        isEnabled.classList.toggle('fa-toggle-on');
+                                    }
+                                    isEnabled.addEventListener('click', async()=>{
+                                        const dis = isEnabled.classList.toggle('fa-toggle-off');
+                                        isEnabled.classList.toggle('fa-toggle-on');
+                                        cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-off');
+                                        cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-on');
+                                        cache[e.book].entries[e.data.uid].disable = dis;
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
+                                    active.append(isEnabled);
+                                }
+                                tr.append(active);
+                            }
+                            const entry = document.createElement('td'); {
+                                const wrap = document.createElement('div'); {
+                                    wrap.classList.add('stwid--colwrap');
+                                    wrap.classList.add('stwid--entry');
+                                    const bookLabel = document.createElement('div'); {
+                                        bookLabel.classList.add('stwid--book');
+                                        const i = document.createElement('i'); {
+                                            i.classList.add('fa-solid', 'fa-fw', 'fa-book-atlas');
+                                            bookLabel.append(i);
+                                        }
+                                        const txt = document.createElement('span'); {
+                                            txt.textContent = e.book;
+                                            bookLabel.append(txt);
+                                        }
+                                        wrap.append(bookLabel);
+                                    }
+                                    const comment = document.createElement('div'); {
+                                        comment.classList.add('stwid--comment');
+                                        comment.textContent = e.data.comment;
+                                        wrap.append(comment);
+                                    }
+                                    const key = document.createElement('div'); {
+                                        key.classList.add('stwid--key');
+                                        key.textContent = e.data.key.join(', ');
+                                    }
+                                    wrap.append(key);
+                                    entry.append(wrap);
+                                }
+                                tr.append(entry);
+                            }
+                            const strategy = document.createElement('td'); {
+                                const strat = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="entryStateSelector"]').cloneNode(true)); {
+                                    strat.classList.add('stwid--strategy');
+                                    strat.value = entryState(e.data);
+                                    strat.addEventListener('change', async()=>{
+                                        const value = strat.value;
+                                        cache[e.book].dom.entry[e.data.uid].strategy.value = value;
+                                        switch (value) {
+                                            case 'constant': {
+                                                cache[e.book].entries[e.data.uid].constant = true;
+                                                cache[e.book].entries[e.data.uid].vectorized = false;
+                                                break;
+                                            }
+                                            case 'normal': {
+                                                cache[e.book].entries[e.data.uid].constant = false;
+                                                cache[e.book].entries[e.data.uid].vectorized = false;
+                                                break;
+                                            }
+                                            case 'vectorized': {
+                                                cache[e.book].entries[e.data.uid].constant = false;
+                                                cache[e.book].entries[e.data.uid].vectorized = true;
+                                                break;
+                                            }
+                                        }
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
+                                    strategy.append(strat);
+                                }
+                                tr.append(strategy);
+                            }
+                            const position = document.createElement('td'); {
+                                const pos = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="position"]').cloneNode(true)); {
+                                    pos.classList.add('stwid--position');
+                                    pos.value = e.data.position;
+                                    pos.addEventListener('change', async()=>{
+                                        const value = pos.value;
+                                        cache[e.book].dom.entry[e.data.uid].position.value = value;
+                                        cache[e.book].entries[e.data.uid].position = value;
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
+                                    position.append(pos);
+                                }
+                                tr.append(position);
+                            }
+                            const depth = document.createElement('td'); {
+                                const inp = document.createElement('input'); {
+                                    inp.classList.add('stwid--input');
+                                    inp.classList.add('text_pole');
+                                    inp.name = 'depth';
+                                    inp.min = '0';
+                                    inp.max = '99999';
+                                    inp.type = 'number';
+                                    inp.value = e.data.depth ?? '';
+                                    depth.append(inp);
+                                }
+                                tr.append(depth);
+                            }
+                            const order = document.createElement('td'); {
+                                const inp = document.createElement('input'); {
+                                    inp.classList.add('stwid--input');
+                                    inp.classList.add('text_pole');
+                                    inp.name = 'order';
+                                    inp.min = '0';
+                                    inp.max = '99999';
+                                    inp.type = 'number';
+                                    inp.value = e.data.order ?? '';
+                                    order.append(inp);
+                                }
+                                tr.append(order);
+                            }
+                            const probability = document.createElement('td'); {
+                                const inp = document.createElement('input'); {
+                                    inp.classList.add('stwid--input');
+                                    inp.classList.add('text_pole');
+                                    inp.name = 'selective_probability';
+                                    inp.min = '0';
+                                    inp.max = '100';
+                                    inp.type = 'number';
+                                    inp.value = e.data.selective_probability ?? '';
+                                    probability.append(inp);
+                                }
+                                tr.append(probability);
+                            }
+                            tbody.append(tr);
+                        }
+                    }
+                    tbl.append(tbody);
+                }
+                wrap.append(tbl);
+            }
+            body.append(wrap);
+        }
+    }
+    dom.editor.append(body);
+};
+
+const openOrderHelper = (book = null)=>{
+    if (!dom.order.toggle) return;
+    dom.order.toggle.classList.add('stwid--active');
+    renderOrderHelper(book);
+};
+
 
 /** Last clickd/selected DOM (WI entry) @type {HTMLElement} */
 let selectLast = null;
@@ -617,6 +1072,24 @@ const renderBook = async(name, before = null, bookData = null)=>{
                                         fillTitles.append(txt);
                                     }
                                     menu.append(fillTitles);
+                                }
+                                const orderHelper = document.createElement('div'); {
+                                    orderHelper.classList.add('stwid--item');
+                                    orderHelper.classList.add('stwid--orderHelper');
+                                    orderHelper.addEventListener('click', ()=>{
+                                        openOrderHelper(name);
+                                    });
+                                    const i = document.createElement('i'); {
+                                        i.classList.add('stwid--icon');
+                                        i.classList.add('fa-solid', 'fa-fw', 'fa-arrow-down-wide-short');
+                                        orderHelper.append(i);
+                                    }
+                                    const txt = document.createElement('span'); {
+                                        txt.classList.add('stwid--label');
+                                        txt.textContent = 'Order Helper';
+                                        orderHelper.append(txt);
+                                    }
+                                    menu.append(orderHelper);
                                 }
                                 const exp = document.createElement('div'); {
                                     exp.classList.add('stwid--item');
@@ -1066,439 +1539,14 @@ const addDrawer = ()=>{
                         order.classList.add('fa-solid', 'fa-fw', 'fa-arrow-down-wide-short');
                         order.title = 'Order Helper\n---\nUse drag and drop to help assign an "Order" value to entries of all active books.';
                         order.addEventListener('click', ()=>{
-                            dom.editor.innerHTML = '';
-                            const is = order.classList.toggle('stwid--active');
-                            currentEditor = null;
-                            if (dom.activationToggle.classList.contains('stwid--active')) {
-                                dom.activationToggle.click();
+                            const isActive = order.classList.contains('stwid--active');
+                            if (isActive) {
+                                order.classList.remove('stwid--active');
+                                dom.editor.innerHTML = '';
+                                currentEditor = null;
+                                return;
                             }
-                            for (const cb of Object.values(cache)) {
-                                for (const ce of Object.values(cb.dom.entry)) {
-                                    ce.root.classList.remove('stwid--active');
-                                }
-                            }
-                            if (is) {
-                                const entries = sortEntries(
-                                    Object.entries(cache)
-                                        .filter(([name,data])=>selected_world_info.includes(name))
-                                        .map(([name,data])=>Object.values(data.entries).map(it=>({ book:name,data:it })))
-                                        .flat(),
-                                    SORT.PROMPT,
-                                    SORT_DIRECTION.ASCENDING,
-                                );
-                                const body = document.createElement('div'); {
-                                    body.classList.add('stwid--orderHelper');
-                                    const actions = document.createElement('div'); {
-                                        actions.classList.add('stwid--actions');
-                                        const filterToggle = document.createElement('div'); {
-                                            filterToggle.classList.add('menu_button');
-                                            filterToggle.classList.add('fa-solid', 'fa-fw', 'fa-filter');
-                                            filterToggle.title = 'Filter entries\n---\nOrder will only be applied to unfiltered entries';
-                                            filterToggle.addEventListener('click', ()=>{
-                                                const is = dom.order.filter.root.classList.toggle('stwid--active');
-                                                if (is) {
-                                                    if (entries.length) {
-                                                        dom.order.filter.preview.textContent = JSON.stringify(Object.assign({ book:entries[0].book }, entries[0].data), null, 2);
-                                                    }
-                                                }
-                                            });
-                                            actions.append(filterToggle);
-                                        }
-                                        const startLbl = document.createElement('label'); {
-                                            startLbl.classList.add('stwid--inputWrap');
-                                            startLbl.title = 'Starting Order (topmost entry in list)';
-                                            startLbl.append('Start: ');
-                                            const start = document.createElement('input'); {
-                                                dom.order.start = start;
-                                                start.classList.add('stwid--input');
-                                                start.classList.add('text_pole');
-                                                start.type = 'number';
-                                                start.min = '1';
-                                                start.max = '10000';
-                                                start.value = localStorage.getItem('stwid--order-start') ?? '100';
-                                                start.addEventListener('change', ()=>{
-                                                    localStorage.setItem('stwid--order-start', start.value);
-                                                });
-                                                startLbl.append(start);
-                                            }
-                                            actions.append(startLbl);
-                                        }
-                                        const stepLbl = document.createElement('label'); {
-                                            stepLbl.classList.add('stwid--inputWrap');
-                                            stepLbl.append('Spacing: ');
-                                            const step = document.createElement('input'); {
-                                                dom.order.step = step;
-                                                step.classList.add('stwid--input');
-                                                step.classList.add('text_pole');
-                                                step.type = 'number';
-                                                step.min = '1';
-                                                step.max = '10000';
-                                                step.value = localStorage.getItem('stwid--order-step') ?? '10';
-                                                step.addEventListener('change', ()=>{
-                                                    localStorage.setItem('stwid--order-step', step.value);
-                                                });
-                                                stepLbl.append(step);
-                                            }
-                                            actions.append(stepLbl);
-                                        }
-                                        const dir = document.createElement('div'); {
-                                            dir.classList.add('stwid--inputWrap');
-                                            dir.append('Direction: ');
-                                            const wrap = document.createElement('div'); {
-                                                wrap.classList.add('stwid--toggleWrap');
-                                                const up = document.createElement('label'); {
-                                                    up.classList.add('stwid--inputWrap');
-                                                    up.title = 'Start at the bottom of the list';
-                                                    const inp = document.createElement('input'); {
-                                                        dom.order.direction.up = inp;
-                                                        inp.type = 'radio';
-                                                        inp.checked = (localStorage.getItem('stwid--order-direction') ?? 'down') == 'up';
-                                                        inp.addEventListener('click', ()=>{
-                                                            inp.checked = true;
-                                                            dom.order.direction.down.checked = false;
-                                                            apply.classList.remove('fa-arrow-down-1-9');
-                                                            apply.classList.add('fa-arrow-up-9-1');
-                                                            localStorage.setItem('stwid--order-direction', 'up');
-                                                        });
-                                                        up.append(inp);
-                                                    }
-                                                    up.append('up');
-                                                    wrap.append(up);
-                                                }
-                                                const down = document.createElement('label'); {
-                                                    down.classList.add('stwid--inputWrap');
-                                                    down.title = 'Start at the top of the list';
-                                                    const inp = document.createElement('input'); {
-                                                        dom.order.direction.down = inp;
-                                                        inp.type = 'radio';
-                                                        inp.checked = (localStorage.getItem('stwid--order-direction') ?? 'down') == 'down';
-                                                        inp.addEventListener('click', ()=>{
-                                                            inp.checked = true;
-                                                            dom.order.direction.up.checked = false;
-                                                            apply.classList.add('fa-arrow-down-1-9');
-                                                            apply.classList.remove('fa-arrow-up-9-1');
-                                                            localStorage.setItem('stwid--order-direction', 'down');
-                                                        });
-                                                        down.append(inp);
-                                                    }
-                                                    down.append('down');
-                                                    wrap.append(down);
-                                                }
-                                                dir.append(wrap);
-                                            }
-                                            actions.append(dir);
-                                        }
-                                        const apply = document.createElement('div'); {
-                                            apply.classList.add('menu_button');
-                                            apply.classList.add('fa-solid', 'fa-fw');
-                                            if ((localStorage.getItem('stwid--order-direction') ?? 'down') == 'up') {
-                                                apply.classList.add('fa-arrow-up-9-1');
-                                            } else {
-                                                apply.classList.add('fa-arrow-down-1-9');
-                                            }
-                                            apply.title = 'Apply current sorting as Order';
-                                            apply.addEventListener('click', async()=>{
-                                                const start = parseInt(dom.order.start.value);
-                                                const step = parseInt(dom.order.step.value);
-                                                const up = dom.order.direction.up.checked;
-                                                let order = start;
-                                                let rows = [...dom.order.tbody.children];
-                                                const books = [];
-                                                if (up) rows.reverse();
-                                                for (const tr of rows) {
-                                                    if (tr.classList.contains('stwid--isFiltered')) continue;
-                                                    const book = tr.getAttribute('data-book');
-                                                    const uid = tr.getAttribute('data-uid');
-                                                    if (!books.includes(book)) books.push(book);
-                                                    cache[book].entries[uid].order = order;
-                                                    /**@type {HTMLInputElement}*/(tr.querySelector('[name="order"]')).value = order.toString();
-                                                    order += step;
-                                                }
-                                                for (const book of books) {
-                                                    await saveWorldInfo(book, { entries:cache[book].entries }, true);
-                                                }
-                                            });
-                                            actions.append(apply);
-                                        }
-                                        body.append(actions);
-                                    }
-                                    const filter = document.createElement('div'); {
-                                        dom.order.filter.root = filter;
-                                        filter.classList.add('stwid--filter');
-                                        const main = document.createElement('div'); {
-                                            main.classList.add('stwid--main');
-                                            const hint = document.createElement('div'); {
-                                                hint.classList.add('stwid--hint');
-                                                hint.innerHTML = `
-                                                    Script will be called for each entry in all active books.
-                                                    Every entry for which the script returns <code>true</code> will be kept.
-                                                    Other entries will be filtered out.
-                                                    <br>
-                                                    Use <code>{{var::entry}}</code> to access the entry and its properties (look
-                                                    right for available fields).
-                                                    <br>
-                                                    Example:
-                                                    <br>
-                                                    <code>/= entry.book == 'My Book' and !entry.disable and entry.depth > 4</code>
-                                                `;
-                                                main.append(hint);
-                                            }
-                                            const script = document.createElement('div'); {
-                                                script.classList.add('stwid--script');
-                                                const syntax = document.createElement('div'); {
-                                                    syntax.classList.add('stwid--syntax');
-                                                    syntax.classList.add('hljs');
-                                                    syntax.classList.add('language-stscript');
-                                                    script.append(syntax);
-                                                }
-                                                const inp = document.createElement('textarea'); {
-                                                    inp.classList.add('stwid--input');
-                                                    inp.value = localStorage.getItem('stwid--filter') ?? '/= true';
-                                                    const parser = new SlashCommandParser();
-                                                    new AutoComplete(
-                                                        inp,
-                                                        ()=>true,
-                                                        async(text, index)=>parser.getNameAt(text, index),
-                                                        true,
-                                                    );
-                                                    const updateScroll = () => {
-                                                        syntax.scrollTop = inp.scrollTop;
-                                                        syntax.scrollLeft = inp.scrollLeft;
-                                                    };
-                                                    const updateScrollDebounced = debounce(()=>updateScroll(), 0);
-                                                    const filterStack = [];
-                                                    const updateList = async()=>{
-                                                        try {
-                                                            const closure = parser.parse(inp.value);
-                                                            filterStack.push(closure);
-                                                            closure.scope.letVariable('entry');
-                                                            for (const e of entries) {
-                                                                if (filterStack.at(-1) != closure) {
-                                                                    filterStack.splice(filterStack.indexOf(closure), 1);
-                                                                    return;
-                                                                }
-                                                                closure.scope.setVariable('entry', JSON.stringify(Object.assign({ book:e.book }, e.data)));
-                                                                const result = (await closure.execute()).pipe;
-                                                                if (filterStack.at(-1) != closure) {
-                                                                    filterStack.splice(filterStack.indexOf(closure), 1);
-                                                                    return;
-                                                                }
-                                                                if (isTrueBoolean(result)) {
-                                                                    dom.order.entries[e.book][e.data.uid].classList.remove('stwid--isFiltered');
-                                                                } else {
-                                                                    dom.order.entries[e.book][e.data.uid].classList.add('stwid--isFiltered');
-                                                                }
-                                                            }
-                                                            filterStack.splice(filterStack.indexOf(closure), 1);
-                                                        } catch { /* empty */ }
-                                                    };
-                                                    const updateListDebounced = debounce(()=>updateList(), 1000);
-                                                    inp.addEventListener('input', () => {
-                                                        syntax.innerHTML = hljs.highlight(`${inp.value}${inp.value.slice(-1) == '\n' ? ' ' : ''}`, { language:'stscript', ignoreIllegals:true })?.value;
-                                                        updateScrollDebounced();
-                                                        updateListDebounced();
-                                                    });
-                                                    inp.addEventListener('scroll', ()=>{
-                                                        updateScrollDebounced();
-                                                    });
-                                                    inp.style.color = 'transparent';
-                                                    inp.style.background = 'transparent';
-                                                    inp.style.setProperty('text-shadow', 'none', 'important');
-                                                    syntax.innerHTML = hljs.highlight(`${inp.value}${inp.value.slice(-1) == '\n' ? ' ' : ''}`, { language:'stscript', ignoreIllegals:true })?.value;
-                                                    script.append(inp);
-                                                }
-                                                main.append(script);
-                                            }
-                                            filter.append(main);
-                                        }
-                                        const preview = document.createElement('div'); {
-                                            dom.order.filter.preview = preview;
-                                            preview.classList.add('stwid--preview');
-                                            filter.append(preview);
-                                        }
-                                        body.append(filter);
-                                    }
-                                    const wrap = document.createElement('div'); {
-                                        wrap.classList.add('stwid--orderTableWrap');
-                                        const tbl = document.createElement('table'); {
-                                            tbl.classList.add('stwid--orderTable');
-                                            const thead = document.createElement('thead'); {
-                                                const tr = document.createElement('tr'); {
-                                                    for (const col of ['', '', 'Entry', 'Strat', 'Position', 'Depth', 'Order', 'Trigg %']) {
-                                                        const th = document.createElement('th'); {
-                                                            th.textContent = col;
-                                                            tr.append(th);
-                                                        }
-                                                    }
-                                                    thead.append(tr);
-                                                }
-                                                tbl.append(thead);
-                                            }
-                                            const tbody = document.createElement('tbody'); {
-                                                dom.order.tbody = tbody;
-                                                $(tbody).sortable({
-                                                    // handle: 'stwid--sortableHandle',
-                                                    delay: getSortableDelay(),
-                                                });
-                                                for (const e of entries) {
-                                                    const tr = document.createElement('tr'); {
-                                                        tr.setAttribute('data-book', e.book);
-                                                        tr.setAttribute('data-uid', e.data.uid);
-                                                        if (!dom.order.entries[e.book]) {
-                                                            dom.order.entries[e.book] = {};
-                                                        }
-                                                        dom.order.entries[e.book][e.data.uid] = tr;
-                                                        const handle = document.createElement('td'); {
-                                                            const i = document.createElement('div'); {
-                                                                i.classList.add('stwid--sortableHandle');
-                                                                i.textContent = '☰';
-                                                                handle.append(i);
-                                                            }
-                                                            tr.append(handle);
-                                                        }
-                                                        const active = document.createElement('td'); {
-                                                            const isEnabled = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="entryKillSwitch"]').cloneNode(true)); {
-                                                                isEnabled.classList.add('stwid--enabled');
-                                                                if (e.data.disable) {
-                                                                    isEnabled.classList.toggle('fa-toggle-off');
-                                                                    isEnabled.classList.toggle('fa-toggle-on');
-                                                                }
-                                                                isEnabled.addEventListener('click', async()=>{
-                                                                    const dis = isEnabled.classList.toggle('fa-toggle-off');
-                                                                    isEnabled.classList.toggle('fa-toggle-on');
-                                                                    cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-off');
-                                                                    cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-on');
-                                                                    cache[e.book].entries[e.data.uid].disable = dis;
-                                                                    await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
-                                                                });
-                                                                active.append(isEnabled);
-                                                            }
-                                                            tr.append(active);
-                                                        }
-                                                        const entry = document.createElement('td'); {
-                                                            const wrap = document.createElement('div'); {
-                                                                wrap.classList.add('stwid--colwrap');
-                                                                wrap.classList.add('stwid--entry');
-                                                                const book = document.createElement('div'); {
-                                                                    book.classList.add('stwid--book');
-                                                                    const i = document.createElement('i'); {
-                                                                        i.classList.add('fa-solid', 'fa-fw', 'fa-book-atlas');
-                                                                        book.append(i);
-                                                                    }
-                                                                    const txt = document.createElement('span'); {
-                                                                        txt.textContent = e.book;
-                                                                        book.append(txt);
-                                                                    }
-                                                                    wrap.append(book);
-                                                                }
-                                                                const comment = document.createElement('div'); {
-                                                                    comment.classList.add('stwid--comment');
-                                                                    comment.textContent = e.data.comment;
-                                                                    wrap.append(comment);
-                                                                }
-                                                                const key = document.createElement('div'); {
-                                                                    key.classList.add('stwid--key');
-                                                                    key.textContent = e.data.key.join(', ');
-                                                                    wrap.append(key);
-                                                                }
-                                                                entry.append(wrap);
-                                                            }
-                                                            tr.append(entry);
-                                                        }
-                                                        const strategy = document.createElement('td'); {
-                                                            const strat = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="entryStateSelector"]').cloneNode(true)); {
-                                                                strat.classList.add('stwid--strategy');
-                                                                strat.value = entryState(e.data);
-                                                                strat.addEventListener('change', async()=>{
-                                                                    const value = strat.value;
-                                                                    cache[e.book].dom.entry[e.data.uid].strategy.value = value;
-                                                                    switch (value) {
-                                                                        case 'constant': {
-                                                                            cache[e.book].entries[e.data.uid].constant = true;
-                                                                            cache[e.book].entries[e.data.uid].vectorized = false;
-                                                                            break;
-                                                                        }
-                                                                        case 'normal': {
-                                                                            cache[e.book].entries[e.data.uid].constant = false;
-                                                                            cache[e.book].entries[e.data.uid].vectorized = false;
-                                                                            break;
-                                                                        }
-                                                                        case 'vectorized': {
-                                                                            cache[e.book].entries[e.data.uid].constant = false;
-                                                                            cache[e.book].entries[e.data.uid].vectorized = true;
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                    await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
-                                                                });
-                                                                strategy.append(strat);
-                                                            }
-                                                            tr.append(strategy);
-                                                        }
-                                                        const position = document.createElement('td'); {
-                                                            const pos = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="position"]').cloneNode(true)); {
-                                                                pos.classList.add('stwid--position');
-                                                                pos.value = e.data.position;
-                                                                pos.addEventListener('change', async()=>{
-                                                                    const value = pos.value;
-                                                                    cache[e.book].dom.entry[e.data.uid].position.value = value;
-                                                                    cache[e.book].entries[e.data.uid].position = value;
-                                                                    await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
-                                                                });
-                                                                position.append(pos);
-                                                            }
-                                                            tr.append(position);
-                                                        }
-                                                        const depth = document.createElement('td'); {
-                                                            const inp = document.createElement('input'); {
-                                                                inp.classList.add('stwid--input');
-                                                                inp.classList.add('text_pole');
-                                                                inp.name = 'depth';
-                                                                inp.min = '0';
-                                                                inp.max = '99999';
-                                                                inp.type = 'number';
-                                                                inp.value = e.data.depth ?? '';
-                                                                depth.append(inp);
-                                                            }
-                                                            tr.append(depth);
-                                                        }
-                                                        const order = document.createElement('td'); {
-                                                            const inp = document.createElement('input'); {
-                                                                inp.classList.add('stwid--input');
-                                                                inp.classList.add('text_pole');
-                                                                inp.name = 'order';
-                                                                inp.min = '0';
-                                                                inp.max = '99999';
-                                                                inp.type = 'number';
-                                                                inp.value = e.data.order ?? '';
-                                                                order.append(inp);
-                                                            }
-                                                            tr.append(order);
-                                                        }
-                                                        const probability = document.createElement('td'); {
-                                                            const inp = document.createElement('input'); {
-                                                                inp.classList.add('stwid--input');
-                                                                inp.classList.add('text_pole');
-                                                                inp.min = '0';
-                                                                inp.max = '100';
-                                                                inp.type = 'number';
-                                                                inp.value = e.data.probability ?? '';
-                                                                probability.append(inp);
-                                                            }
-                                                            tr.append(probability);
-                                                        }
-                                                        tbody.append(tr);
-                                                    }
-                                                }
-                                                tbl.append(tbody);
-                                            }
-                                            wrap.append(tbl);
-                                        }
-                                        body.append(wrap);
-                                    }
-                                    dom.editor.append(body);
-                                }
-                            }
+                            openOrderHelper();
                         });
                         controls.append(order);
                     }
