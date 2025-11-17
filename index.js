@@ -941,6 +941,29 @@ const loadList = async()=>{
 const loadListDebounced = debounceAsync(()=>loadList());
 
 
+const addInlineEditorListener = ()=>{
+    const worldInfoRoot = document.querySelector('#WorldInfo');
+    const worldSelect = /**@type {HTMLSelectElement}*/(document.querySelector('#world_editor_select'));
+    if (!worldInfoRoot || !worldSelect) return;
+
+    const triggerRefresh = debounceAsync(async()=>{
+        const worldName = worldSelect.value;
+        if (!worldName) return;
+        await delay(getSortableDelay());
+        const data = await loadWorldInfo(worldName);
+        updateWIChangeDebounced(worldName, data);
+    }, getSortableDelay());
+
+    const inlineHandler = (evt)=>{
+        if (!evt.target?.closest('#WorldInfo .world_entry_edit')) return;
+        triggerRefresh();
+    };
+
+    ['submit', 'change', 'input'].forEach(eventName=>{
+        worldInfoRoot.addEventListener(eventName, inlineHandler, true);
+    });
+};
+
 const addDrawer = ()=>{
     document.addEventListener('keydown', async(evt)=>{
         // only run when drawer is open
@@ -1646,6 +1669,7 @@ const addDrawer = ()=>{
     moDrawer.observe(drawerContent, { attributes:true, attributeFilter:['style'] });
 };
 addDrawer();
+addInlineEditorListener();
 loadListDebounced().then(()=>dom.drawer.body.classList.remove('stwid--isLoading'));
 
 
