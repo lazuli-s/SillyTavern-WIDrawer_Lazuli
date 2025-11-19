@@ -1624,16 +1624,17 @@ const addDrawer = ()=>{
             body.classList.add('stwid--isLoading');
             const list = document.createElement('div'); {
                 list.classList.add('stwid--list');
-                const controls = document.createElement('div'); {
-                    controls.classList.add('stwid--controls');
-                    const add = /**@type {HTMLElement}*/(document.querySelector('#world_create_button').cloneNode(true)); {
-                        add.removeAttribute('id');
-                        add.classList.add('stwid--addBook');
-                        add.addEventListener('click', async()=>{
-                            const startPromise = updateWIChangeStarted.promise;
-                            const tempName = getFreeWorldName();
-                            const finalName = await Popup.show.input('Create a new World Info', 'Enter a name for the new file:', tempName);
-                            if (finalName) {
+                    const controls = document.createElement('div'); {
+                        controls.classList.add('stwid--controls');
+                        const add = /**@type {HTMLElement}*/(document.querySelector('#world_create_button').cloneNode(true)); {
+                            add.removeAttribute('id');
+                            add.classList.add('stwid--addBook');
+                            add.querySelector('span')?.remove();
+                            add.addEventListener('click', async()=>{
+                                const startPromise = updateWIChangeStarted.promise;
+                                const tempName = getFreeWorldName();
+                                const finalName = await Popup.show.input('Create a new World Info', 'Enter a name for the new file:', tempName);
+                                if (finalName) {
                                 const created = await createNewWorldInfo(finalName, { interactive: true });
                                 if (created) {
                                     await startPromise;
