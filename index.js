@@ -69,6 +69,17 @@ const dom = {
         tbody: undefined,
     },
 };
+
+const ORDER_HELPER_SORT_STORAGE_KEY = 'stwid--order-helper-sort';
+const orderHelperState = (()=>{
+    try {
+        const stored = JSON.parse(localStorage.getItem(ORDER_HELPER_SORT_STORAGE_KEY));
+        if (Object.values(SORT).includes(stored?.sort) && Object.values(SORT_DIRECTION).includes(stored?.direction)) {
+            return { ...stored, book:null };
+        }
+    } catch { /* empty */ }
+    return { sort:SORT.PROMPT, direction:SORT_DIRECTION.ASCENDING, book:null };
+})();
 /**@type {{name:string, uid:string}} */
 let currentEditor;
 
@@ -339,7 +350,47 @@ export const jumpToEntry = async(name, uid)=>{
     }
 };
 
+const getOrderHelperEntries = (book = orderHelperState.book, includeDom = false)=>{
+    const source = includeDom && dom.order.entries && dom.order.tbody
+        ? Object.entries(dom.order.entries)
+            .map(([entryBook, entries])=>Object.values(entries).map(tr=>({
+                book: entryBook,
+                dom: tr,
+                data: cache[entryBook].entries[tr.getAttribute('data-uid')],
+            })))
+            .flat()
+        : Object.entries(cache)
+            .filter(([name])=>selected_world_info.includes(name))
+            .map(([name,data])=>Object.values(data.entries).map(it=>({ book:name, data:it })))
+            .flat();
+    return sortEntries(source, orderHelperState.sort, orderHelperState.direction)
+        .filter((entry)=>!book || entry.book === book);
+};
+
+const updateOrderHelperPreview = (entries)=>{
+    if (!dom.order.filter.preview) return;
+    const previewEntry = entries[0];
+    if (!previewEntry) {
+        dom.order.filter.preview.textContent = '';
+        return;
+    }
+    dom.order.filter.preview.textContent = JSON.stringify(Object.assign({ book:previewEntry.book }, previewEntry.data), null, 2);
+};
+
+const applyOrderHelperSortToDom = ()=>{
+    if (!dom.order.tbody) return;
+    const entries = getOrderHelperEntries(orderHelperState.book, true);
+    for (const entry of entries) {
+        const row = dom.order.entries?.[entry.book]?.[entry.data.uid];
+        if (row) {
+            dom.order.tbody.append(row);
+        }
+    }
+    updateOrderHelperPreview(entries);
+};
+
 const renderOrderHelper = (book = null)=>{
+    orderHelperState.book = book;
     dom.editor.innerHTML = '';
     currentEditor = null;
     if (dom.activationToggle.classList.contains('stwid--active')) {
@@ -355,18 +406,45 @@ const renderOrderHelper = (book = null)=>{
     dom.order.filter.preview = undefined;
     dom.order.tbody = undefined;
 
-    const entries = sortEntries(
-        Object.entries(cache)
-            .filter(([name])=>selected_world_info.includes(name))
-            .map(([name,data])=>Object.values(data.entries).map(it=>({ book:name, data:it })))
-            .flat(),
-        SORT.PROMPT,
-        SORT_DIRECTION.ASCENDING,
-    ).filter((entry)=>!book || entry.book === book);
+    const entries = getOrderHelperEntries(book);
     const body = document.createElement('div'); {
         body.classList.add('stwid--orderHelper');
         const actions = document.createElement('div'); {
             actions.classList.add('stwid--actions');
+            const sortWrap = document.createElement('label'); {
+                sortWrap.classList.add('stwid--inputWrap');
+                sortWrap.append('Sort: ');
+                const sortSel = document.createElement('select'); {
+                    sortSel.classList.add('text_pole');
+                    const opts = [
+                        ['Title ↗', SORT.ALPHABETICAL, SORT_DIRECTION.ASCENDING],
+                        ['Title ↘', SORT.ALPHABETICAL, SORT_DIRECTION.DESCENDING],
+                        ['Prompt ↗', SORT.PROMPT, SORT_DIRECTION.ASCENDING],
+                        ['Prompt ↘', SORT.PROMPT, SORT_DIRECTION.DESCENDING],
+                        ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
+                        ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
+                        ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
+                        ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
+                    ];
+                    for (const [label, sort, direction] of opts) {
+                        const opt = document.createElement('option'); {
+                            opt.value = JSON.stringify({ sort, direction });
+                            opt.textContent = label;
+                            opt.selected = orderHelperState.sort == sort && orderHelperState.direction == direction;
+                            sortSel.append(opt);
+                        }
+                    }
+                    sortSel.addEventListener('change', ()=>{
+                        const value = JSON.parse(sortSel.value);
+                        orderHelperState.sort = value.sort;
+                        orderHelperState.direction = value.direction;
+                        localStorage.setItem(ORDER_HELPER_SORT_STORAGE_KEY, JSON.stringify(value));
+                        applyOrderHelperSortToDom();
+                    });
+                    sortWrap.append(sortSel);
+                }
+                actions.append(sortWrap);
+            }
             const filterToggle = document.createElement('div'); {
                 filterToggle.classList.add('menu_button');
                 filterToggle.classList.add('fa-solid', 'fa-fw', 'fa-filter');
@@ -374,9 +452,7 @@ const renderOrderHelper = (book = null)=>{
                 filterToggle.addEventListener('click', ()=>{
                     const is = dom.order.filter.root.classList.toggle('stwid--active');
                     if (is) {
-                        if (entries.length) {
-                            dom.order.filter.preview.textContent = JSON.stringify(Object.assign({ book:entries[0].book }, entries[0].data), null, 2);
-                        }
+                        updateOrderHelperPreview(getOrderHelperEntries(orderHelperState.book, true));
                     }
                 });
                 actions.append(filterToggle);
@@ -548,17 +624,7 @@ const renderOrderHelper = (book = null)=>{
                             const script = `return async function orderHelperFilter(data) {${clone}}();`;
                             try {
                                 await closure.compile(script);
-                                const entries = sortEntries(
-                                    Object.entries(dom.order.entries)
-                                        .map(([book,entries])=>Object.values(entries).map(tr=>({
-                                            book,
-                                            dom:tr,
-                                            data:cache[book].entries[tr.getAttribute('data-uid')],
-                                        })))
-                                        .flat(),
-                                    SORT.PROMPT,
-                                    SORT_DIRECTION.ASCENDING,
-                                );
+                                const entries = getOrderHelperEntries(orderHelperState.book, true);
                                 for (const e of entries) {
                                     dom.order.entries[e.book][e.data.uid].classList.remove('stwid--isFiltered');
                                     dom.order.entries[e.book][e.data.uid].classList.add('stwid--isFiltered');
