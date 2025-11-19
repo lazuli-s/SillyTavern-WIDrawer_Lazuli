@@ -292,7 +292,7 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   border-radius: 10px;
   display: flex;
   flex-direction: column;
-  background-color: var(--secondaryBg, var(--SmartThemeBlurTintColor));
+  background-color: rgb(32 33 36 / 90%);
 }
 .stwid--blocker .stwid--menu .stwid--item {
   opacity: 0.5;
