@@ -318,16 +318,17 @@ body.stwid-- #WorldInfo {
 		flex-direction: column;
 		background-color: var(--secondaryBg, var(--SmartThemeBlurTintColor));
 
-		.stwid--item {
-			opacity: 0.5;
-			background-color: rgb(255 255 255 / 0);
-			cursor: pointer;
-			transition: 200ms;
-			display: flex;
-			gap: 0.5em;
-			align-items: baseline;
-			padding: 5px;
-			&:hover {
+                .stwid--item {
+                        opacity: 0.5;
+                        background-color: rgb(255 255 255 / 0);
+                        cursor: pointer;
+                        transition: 200ms;
+                        display: flex;
+                        flex-direction: row;
+                        gap: 0.5em;
+                        align-items: baseline;
+                        padding: 5px;
+                        &:hover {
 				opacity: 1;
 				background-color: rgb(255 255 255 / 0.0625);
 			}
