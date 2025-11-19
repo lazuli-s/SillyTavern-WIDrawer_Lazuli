@@ -728,7 +728,7 @@ const renderOrderHelper = (book = null)=>{
                                     pos.value = e.data.position;
                                     pos.addEventListener('change', async()=>{
                                         const value = pos.value;
-                                        cache[e.book].dom.entry[e.data.uid].position.value = value;
+                                        cache[e.book].dom.entry[e.data.uid]?.position?.value = value;
                                         cache[e.book].entries[e.data.uid].position = value;
                                         await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
                                     });
