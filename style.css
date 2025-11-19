@@ -56,10 +56,27 @@ body.stwid-- #WorldInfo .stwid--list .stwid--filter {
   align-items: center;
 }
 body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--searchEntries,
-body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--filterActive {
+body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--filterActive,
+body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--collapseAll {
   display: flex;
   gap: 0.5em;
   align-items: center;
+}
+body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--collapseAll {
+  border: 1px solid var(--SmartThemeBorderColor);
+  border-radius: 4px;
+  background: rgb(var(--primaryBgCol, var(--SmartThemeBlurTintColor)));
+  color: var(--SmartThemeQuoteColor);
+  padding: 0.25em 0.5em;
+  cursor: pointer;
+  transition: 200ms;
+}
+body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--collapseAll:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+body.stwid-- #WorldInfo .stwid--list .stwid--filter .stwid--collapseAll:not(:disabled):hover {
+  filter: brightness(1.1);
 }
 body.stwid-- #WorldInfo .stwid--list .stwid--books {
   flex: 1 1 auto;
