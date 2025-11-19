@@ -5,12 +5,6 @@ import { extension_settings } from '../../../../extensions.js';
 /** @readonly */
 /** @enum {string} */
 export const SORT = {
-    /** Keep the current list order (search results/custom manual) */
-    SEARCH: 'search',
-    /** Prioritize prompt position/depth/order */
-    PRIORITY: 'priority',
-    /** Keep user-defined ordering */
-    CUSTOM: 'custom',
     /** Alphabetical by entry title */
     TITLE: 'title',
     /** Numeric position value */

@@ -75,7 +75,7 @@ const dom = {
 const ORDER_HELPER_SORT_STORAGE_KEY = 'stwid--order-helper-sort';
 const ORDER_HELPER_HIDE_KEYS_STORAGE_KEY = 'stwid--order-helper-hide-keys';
 const orderHelperState = (()=>{
-    const state = { sort:SORT.PRIORITY, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
+    const state = { sort:SORT.TITLE, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
     try {
         const stored = JSON.parse(localStorage.getItem(ORDER_HELPER_SORT_STORAGE_KEY));
         if (Object.values(SORT).includes(stored?.sort) && Object.values(SORT_DIRECTION).includes(stored?.direction)) {
@@ -137,12 +137,6 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
     let result = [...entries];
     let shouldReverse = false;
     switch (sortLogic) {
-        case SORT.SEARCH:
-        case SORT.CUSTOM: {
-            // Preserve the current ordering
-            shouldReverse = sortDirection == SORT_DIRECTION.DESCENDING;
-            break;
-        }
         case SORT.ALPHABETICAL:
         case SORT.TITLE: {
             shouldReverse = true;
@@ -154,8 +148,7 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
             result = stringSort((entry)=>Array.isArray(entry.key) ? entry.key.join(', ') : '');
             break;
         }
-        case SORT.PROMPT:
-        case SORT.PRIORITY: {
+        case SORT.PROMPT: {
             shouldReverse = true;
             result = entries.toSorted((a,b)=>{
                 if (x(a).position > x(b).position) return 1;
@@ -489,9 +482,6 @@ const renderOrderHelper = (book = null)=>{
                 const sortSel = document.createElement('select'); {
                     sortSel.classList.add('text_pole');
                     const opts = [
-                        ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
-                        ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
-                        ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
                         ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
                         ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
                         ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
@@ -1777,9 +1767,6 @@ const addDrawer = ()=>{
                             Settings.instance.save();
                         });
                         const opts = [
-                            ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
-                            ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
-                            ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
                             ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
                             ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
                             ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
