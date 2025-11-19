@@ -417,7 +417,7 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
   width: 100%;
 }
 .stwid--orderTable thead {
