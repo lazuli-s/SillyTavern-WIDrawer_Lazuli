@@ -1661,6 +1661,7 @@ const addDrawer = ()=>{
                         const add = /**@type {HTMLElement}*/(document.querySelector('#world_create_button').cloneNode(true)); {
                             add.removeAttribute('id');
                             add.classList.add('stwid--addBook');
+                            add.title = 'Create New Book';
                             add.querySelector('span')?.remove();
                             add.addEventListener('click', async()=>{
                                 const startPromise = updateWIChangeStarted.promise;
