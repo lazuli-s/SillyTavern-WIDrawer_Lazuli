@@ -56,16 +56,32 @@ body.stwid-- #WorldInfo {
 				color: var(--SmartThemeQuoteColor);
 			}
 		}
-		.stwid--filter {
-			display: flex;
-			gap: 0.75em;
-			align-items: center;
-			.stwid--searchEntries, .stwid--filterActive {
-				display: flex;
-				gap: 0.5em;
-				align-items: center;
-			}
-		}
+                .stwid--filter {
+                        display: flex;
+                        gap: 0.75em;
+                        align-items: center;
+                        .stwid--searchEntries, .stwid--filterActive, .stwid--collapseAll {
+                                display: flex;
+                                gap: 0.5em;
+                                align-items: center;
+                        }
+                        .stwid--collapseAll {
+                                border: 1px solid var(--SmartThemeBorderColor);
+                                border-radius: 4px;
+                                background: rgb(var(--primaryBgCol, var(--SmartThemeBlurTintColor)));
+                                color: var(--SmartThemeQuoteColor);
+                                padding: 0.25em 0.5em;
+                                cursor: pointer;
+                                transition: 200ms;
+                                &:disabled {
+                                        opacity: 0.5;
+                                        cursor: not-allowed;
+                                }
+                                &:not(:disabled):hover {
+                                        filter: brightness(1.1);
+                                }
+                        }
+                }
 		.stwid--books {
 			flex: 1 1 auto;
 

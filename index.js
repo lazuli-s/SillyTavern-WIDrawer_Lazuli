@@ -43,6 +43,8 @@ const dom = {
     /**@type {HTMLElement} */
     editor: undefined,
     /**@type {HTMLElement} */
+    collapseAllToggle: undefined,
+    /**@type {HTMLElement} */
     activationToggle: undefined,
     order: {
         /**@type {HTMLElement} */
@@ -187,6 +189,25 @@ const sortEntriesIfNeeded = (name)=>{
 };
 
 const cache = {};
+const setAllBooksCollapsed = (collapsed)=>{
+    for (const world of Object.values(cache)) {
+        if (!world?.dom?.entryList) continue;
+        world.dom.entryList.classList.toggle('stwid--isCollapsed', collapsed);
+        if (world.dom.collapseToggle) {
+            world.dom.collapseToggle.classList.toggle('fa-chevron-down', collapsed);
+            world.dom.collapseToggle.classList.toggle('fa-chevron-up', !collapsed);
+        }
+    }
+};
+const syncCollapseAllToggle = ()=>{
+    if (!dom.collapseAllToggle) return;
+    const books = Object.values(cache);
+    const hasBooks = books.length > 0;
+    dom.collapseAllToggle.disabled = !hasBooks;
+    const allCollapsed = hasBooks && books.every((world)=>world.dom.entryList.classList.contains('stwid--isCollapsed'));
+    dom.collapseAllToggle.dataset.state = allCollapsed ? 'collapsed' : 'expanded';
+    dom.collapseAllToggle.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+};
 const updateSettingsChange = ()=>{
     console.log('[STWID]', '[UPDATE-SETTINGS]');
     for (const [name, world] of Object.entries(cache)) {
@@ -318,6 +339,7 @@ const updateWIChange = async(name = null, data = null)=>{
         }
     }
     updateWIChangeStarted = Promise.withResolvers();
+    syncCollapseAllToggle();
     updateWIChangeFinished.resolve();
 };
 const updateWIChangeDebounced = debounce(updateWIChange);
@@ -352,6 +374,7 @@ export const jumpToEntry = async(name, uid)=>{
     cache[name].dom.entryList.classList.remove('stwid--isCollapsed');
     cache[name].dom.collapseToggle.classList.add('fa-chevron-up');
     cache[name].dom.collapseToggle.classList.remove('fa-chevron-down');
+    syncCollapseAllToggle();
     cache[name].dom.entry[uid].root.scrollIntoView({ block:'center', inline:'center' });
     if (currentEditor?.name != name || currentEditor?.uid != uid) {
         cache[name].dom.entry[uid].root.click();
@@ -1095,6 +1118,7 @@ const renderBook = async(name, before = null, bookData = null)=>{
                         collapseToggle.classList.add('fa-chevron-up');
                         collapseToggle.classList.remove('fa-chevron-down');
                     }
+                    syncCollapseAllToggle();
                 });
                 head.append(title);
             }
@@ -1348,6 +1372,7 @@ const renderBook = async(name, before = null, bookData = null)=>{
                             collapseToggle.classList.add('fa-chevron-up');
                             collapseToggle.classList.remove('fa-chevron-down');
                         }
+                        syncCollapseAllToggle();
                     });
                     actions.append(collapseToggle);
                 }
@@ -1366,6 +1391,7 @@ const renderBook = async(name, before = null, bookData = null)=>{
         }
         if (before) before.insertAdjacentElement('beforebegin', book);
         else dom.books.append(book);
+        syncCollapseAllToggle();
     }
     return book;
 };
@@ -1633,20 +1659,21 @@ const addDrawer = ()=>{
                             add.addEventListener('click', async()=>{
                                 const startPromise = updateWIChangeStarted.promise;
                                 const tempName = getFreeWorldName();
-                                const finalName = await Popup.show.input('Create a new World Info', 'Enter a name for the new file:', tempName);
-                                if (finalName) {
-                                const created = await createNewWorldInfo(finalName, { interactive: true });
-                                if (created) {
-                                    await startPromise;
-                                    await updateWIChangeFinished.promise;
-                                    cache[finalName].dom.entryList.classList.remove('stwid--isCollapsed');
-                                    cache[name].dom.collapseToggle.classList.add('fa-chevron-up');
-                                    cache[name].dom.collapseToggle.classList.remove('fa-chevron-down');
-                                    cache[finalName].dom.root.scrollIntoView({ block:'center', inline:'center' });
+                                    const finalName = await Popup.show.input('Create a new World Info', 'Enter a name for the new file:', tempName);
+                                    if (finalName) {
+                                    const created = await createNewWorldInfo(finalName, { interactive: true });
+                                    if (created) {
+                                        await startPromise;
+                                        await updateWIChangeFinished.promise;
+                                        cache[finalName].dom.entryList.classList.remove('stwid--isCollapsed');
+                                        cache[name].dom.collapseToggle.classList.add('fa-chevron-up');
+                                        cache[name].dom.collapseToggle.classList.remove('fa-chevron-down');
+                                        syncCollapseAllToggle();
+                                        cache[finalName].dom.root.scrollIntoView({ block:'center', inline:'center' });
+                                    }
                                 }
-                            }
-                        });
-                        controls.append(add);
+                            });
+                            controls.append(add);
                     }
                     const imp = document.createElement('div'); {
                         imp.classList.add('menu_button');
@@ -1830,6 +1857,21 @@ const addDrawer = ()=>{
                         }
                         filterActive.append('Active');
                         filter.append(filterActive);
+                    }
+                    const collapseAllToggle = document.createElement('button'); {
+                        dom.collapseAllToggle = collapseAllToggle;
+                        collapseAllToggle.type = 'button';
+                        collapseAllToggle.classList.add('stwid--collapseAll');
+                        collapseAllToggle.title = 'Collapse or expand all books';
+                        collapseAllToggle.dataset.state = 'collapsed';
+                        collapseAllToggle.textContent = 'Expand all';
+                        collapseAllToggle.addEventListener('click', ()=>{
+                            const shouldCollapse = dom.collapseAllToggle.dataset.state !== 'collapsed';
+                            setAllBooksCollapsed(shouldCollapse);
+                            syncCollapseAllToggle();
+                        });
+                        filter.append(collapseAllToggle);
+                        syncCollapseAllToggle();
                     }
                     list.append(filter);
                 }
