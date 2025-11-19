@@ -52,6 +52,15 @@ body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow {
   display: flex;
   gap: 0.25em;
   align-items: center;
+  flex-wrap: wrap;
+}
+body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow .stwid--bookSortToggle,
+body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow .stwid--clearBookSorts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.2em 0.5em;
+  min-height: 1.85em;
 }
 body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--active {
   color: var(--SmartThemeQuoteColor);

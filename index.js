@@ -241,7 +241,7 @@ const getSortFromMetadata = (metadata)=>{
     return { sort, direction };
 };
 const getBookSortChoice = (name)=>{
-    const bookSort = cache[name]?.sort;
+    const bookSort = Settings.instance.useBookSorts ? cache[name]?.sort : null;
     return {
         sort: bookSort?.sort ?? Settings.instance.sortLogic,
         direction: bookSort?.direction ?? Settings.instance.sortDirection,
@@ -274,6 +274,14 @@ const setBookSortPreference = async(name, sort = null, direction = null)=>{
     }
     await saveWorldInfo(name, buildSavePayload(name), true);
     sortEntriesIfNeeded(name);
+};
+
+const clearBookSortPreferences = async()=>{
+    for (const [name, data] of Object.entries(cache)) {
+        const hasSortPreference = Boolean(data.metadata?.[METADATA_NAMESPACE]?.[METADATA_SORT_KEY]);
+        if (!hasSortPreference) continue;
+        await setBookSortPreference(name, null, null);
+    }
 };
 
 const sortEntriesIfNeeded = (name)=>{
@@ -1876,6 +1884,60 @@ const addDrawer = ()=>{
                         });
                         appendSortOptions(sortSel, Settings.instance.sortLogic, Settings.instance.sortDirection);
                         controlsSecondary.append(sortSel);
+                    }
+                    const bookSortToggle = document.createElement('button'); {
+                        bookSortToggle.type = 'button';
+                        bookSortToggle.classList.add('menu_button');
+                        bookSortToggle.classList.add('stwid--bookSortToggle');
+                        const icon = document.createElement('i'); {
+                            icon.classList.add('fa-solid', 'fa-fw');
+                            bookSortToggle.append(icon);
+                        }
+                        const txt = document.createElement('span'); {
+                            txt.classList.add('stwid--label');
+                            bookSortToggle.append(txt);
+                        }
+                        const updateToggleState = ()=>{
+                            const enabled = Settings.instance.useBookSorts;
+                            bookSortToggle.classList.toggle('stwid--active', enabled);
+                            bookSortToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                            icon.classList.toggle('fa-toggle-on', enabled);
+                            icon.classList.toggle('fa-toggle-off', !enabled);
+                            txt.textContent = enabled ? 'Per-book sort: On' : 'Per-book sort: Off';
+                        };
+                        updateToggleState();
+                        bookSortToggle.addEventListener('click', ()=>{
+                            Settings.instance.useBookSorts = !Settings.instance.useBookSorts;
+                            Settings.instance.save();
+                            updateToggleState();
+                            for (const name of Object.keys(cache)) {
+                                sortEntriesIfNeeded(name);
+                            }
+                        });
+                        controlsSecondary.append(bookSortToggle);
+                    }
+                    const clearBookSorts = document.createElement('button'); {
+                        clearBookSorts.type = 'button';
+                        clearBookSorts.classList.add('menu_button');
+                        clearBookSorts.classList.add('stwid--clearBookSorts');
+                        const icon = document.createElement('i'); {
+                            icon.classList.add('fa-solid', 'fa-fw', 'fa-broom');
+                            clearBookSorts.append(icon);
+                        }
+                        const txt = document.createElement('span'); {
+                            txt.classList.add('stwid--label');
+                            txt.textContent = 'Clear All Preferences';
+                            clearBookSorts.append(txt);
+                        }
+                        clearBookSorts.addEventListener('click', async()=>{
+                            clearBookSorts.disabled = true;
+                            try {
+                                await clearBookSortPreferences();
+                            } finally {
+                                clearBookSorts.disabled = false;
+                            }
+                        });
+                        controlsSecondary.append(clearBookSorts);
                     }
                     controls.append(controlsPrimary, controlsSecondary);
                     list.append(controls);
