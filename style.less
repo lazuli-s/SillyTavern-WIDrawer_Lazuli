@@ -339,6 +339,7 @@ body.stwid-- #WorldInfo {
 			}
                         .stwid--label {
                                 flex: 1 1 auto;
+                                min-width: fit-content;
                         }
 
                         &.stwid--bookSort {
@@ -346,9 +347,11 @@ body.stwid-- #WorldInfo {
                                 cursor: default;
 
                                 select {
-                                        width: 100%;
+                                        width: fit-content;
                                         color: inherit;
                                         background-color: rgb(255 255 255 / 0.05);
+                                        min-height: 0px;
+                                        margin: 0;
                                 }
                         }
                 }

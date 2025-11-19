@@ -316,15 +316,18 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
 }
 .stwid--blocker .stwid--menu .stwid--item .stwid--label {
     flex: 1 1 auto;
+    min-width: fit-content;
 }
 .stwid--blocker .stwid--menu .stwid--item.stwid--bookSort {
     opacity: 1;
     cursor: default;
 }
 .stwid--blocker .stwid--menu .stwid--item.stwid--bookSort select {
-    width: 100%;
+    width: fit-content;
     color: inherit;
     background-color: rgba(255, 255, 255, 0.05);
+    min-height: 0px;
+    margin: 0;
 }
 .stwid--orderHelper {
     display: flex;
