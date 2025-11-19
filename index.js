@@ -1761,6 +1761,8 @@ const addDrawer = ()=>{
                 list.classList.add('stwid--list');
                     const controls = document.createElement('div'); {
                         controls.classList.add('stwid--controls');
+                        const controlsPrimary = document.createElement('div');
+                        controlsPrimary.classList.add('stwid--controlsRow');
                         const add = /**@type {HTMLElement}*/(document.querySelector('#world_create_button').cloneNode(true)); {
                             add.removeAttribute('id');
                             add.classList.add('stwid--addBook');
@@ -1782,7 +1784,7 @@ const addDrawer = ()=>{
                                 }
                             }
                         });
-                        controls.append(add);
+                        controlsPrimary.append(add);
                     }
                     const imp = document.createElement('div'); {
                         imp.classList.add('menu_button');
@@ -1791,7 +1793,7 @@ const addDrawer = ()=>{
                         imp.addEventListener('click', ()=>{
                             /**@type {HTMLInputElement}*/(document.querySelector('#world_import_file')).click();
                         });
-                        controls.append(imp);
+                        controlsPrimary.append(imp);
                     }
                     const refresh = document.createElement('div'); {
                         refresh.classList.add('menu_button');
@@ -1809,7 +1811,7 @@ const addDrawer = ()=>{
                                 dom.drawer.body.classList.remove('stwid--isLoading');
                             }
                         });
-                        controls.append(refresh);
+                        controlsPrimary.append(refresh);
                     }
                     const settings = document.createElement('div'); {
                         dom.activationToggle = settings;
@@ -1840,7 +1842,7 @@ const addDrawer = ()=>{
                                 dom.editor.innerHTML = '';
                             }
                         });
-                        controls.append(settings);
+                        controlsPrimary.append(settings);
                     }
                     const order = document.createElement('div'); {
                         dom.order.toggle = order;
@@ -1857,8 +1859,10 @@ const addDrawer = ()=>{
                             }
                             openOrderHelper();
                         });
-                        controls.append(order);
+                        controlsPrimary.append(order);
                     }
+                    const controlsSecondary = document.createElement('div');
+                    controlsSecondary.classList.add('stwid--controlsRow');
                     const sortSel = document.createElement('select'); {
                         sortSel.classList.add('text_pole');
                         sortSel.addEventListener('change', ()=>{
@@ -1871,8 +1875,9 @@ const addDrawer = ()=>{
                             Settings.instance.save();
                         });
                         appendSortOptions(sortSel, Settings.instance.sortLogic, Settings.instance.sortDirection);
-                        controls.append(sortSel);
+                        controlsSecondary.append(sortSel);
                     }
+                    controls.append(controlsPrimary, controlsSecondary);
                     list.append(controls);
                 }
                 const filter = document.createElement('div'); {

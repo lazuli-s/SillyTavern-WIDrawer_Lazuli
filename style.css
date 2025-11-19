@@ -44,6 +44,12 @@ body.stwid-- #WorldInfo .stwid--list {
 }
 body.stwid-- #WorldInfo .stwid--list .stwid--controls {
   display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  align-items: stretch;
+}
+body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow {
+  display: flex;
   gap: 0.25em;
   align-items: center;
 }

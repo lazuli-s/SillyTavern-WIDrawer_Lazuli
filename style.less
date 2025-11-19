@@ -48,14 +48,20 @@ body.stwid-- #WorldInfo {
 
 		overflow: hidden;
 		width: 300px;
-		.stwid--controls {
-			display: flex;
-			gap: 0.25em;
-			align-items: center;
-			.stwid--active {
-				color: var(--SmartThemeQuoteColor);
-			}
-		}
+                .stwid--controls {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.25em;
+                        align-items: stretch;
+                        .stwid--controlsRow {
+                                display: flex;
+                                gap: 0.25em;
+                                align-items: center;
+                        }
+                        .stwid--active {
+                                color: var(--SmartThemeQuoteColor);
+                        }
+                }
 		.stwid--filter {
 			display: flex;
 			gap: 0.75em;
