@@ -724,6 +724,7 @@ const renderOrderHelper = (book = null)=>{
                             }
                             const position = document.createElement('td'); {
                                 const pos = /**@type {HTMLSelectElement}*/(document.querySelector('#entry_edit_template [name="position"]').cloneNode(true)); {
+                                    cache[e.book].dom.entry[e.data.uid].position = pos;
                                     pos.classList.add('stwid--position');
                                     pos.value = e.data.position;
                                     pos.addEventListener('change', async()=>{
