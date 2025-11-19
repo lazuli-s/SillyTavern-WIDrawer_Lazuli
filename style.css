@@ -300,6 +300,7 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   cursor: pointer;
   transition: 200ms;
   display: flex;
+  flex-direction: row;
   gap: 0.5em;
   align-items: baseline;
   padding: 5px;
