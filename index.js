@@ -746,6 +746,11 @@ const renderOrderHelper = (book = null)=>{
                                     inp.max = '99999';
                                     inp.type = 'number';
                                     inp.value = e.data.depth ?? '';
+                                    inp.addEventListener('change', async()=>{
+                                        const depth = parseInt(inp.value);
+                                        cache[e.book].entries[e.data.uid].depth = Number.isFinite(depth) ? depth : undefined;
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
                                     depth.append(inp);
                                 }
                                 tr.append(depth);
@@ -759,6 +764,11 @@ const renderOrderHelper = (book = null)=>{
                                     inp.max = '99999';
                                     inp.type = 'number';
                                     inp.value = e.data.order ?? '';
+                                    inp.addEventListener('change', async()=>{
+                                        const order = parseInt(inp.value);
+                                        cache[e.book].entries[e.data.uid].order = Number.isFinite(order) ? order : undefined;
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
                                     order.append(inp);
                                 }
                                 tr.append(order);
@@ -772,6 +782,11 @@ const renderOrderHelper = (book = null)=>{
                                     inp.max = '100';
                                     inp.type = 'number';
                                     inp.value = e.data.selective_probability ?? '';
+                                    inp.addEventListener('change', async()=>{
+                                        const probability = parseInt(inp.value);
+                                        cache[e.book].entries[e.data.uid].selective_probability = Number.isFinite(probability) ? probability : undefined;
+                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                    });
                                     probability.append(inp);
                                 }
                                 tr.append(probability);
