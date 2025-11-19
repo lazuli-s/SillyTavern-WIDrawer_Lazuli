@@ -75,7 +75,7 @@ const dom = {
 const ORDER_HELPER_SORT_STORAGE_KEY = 'stwid--order-helper-sort';
 const ORDER_HELPER_HIDE_KEYS_STORAGE_KEY = 'stwid--order-helper-hide-keys';
 const orderHelperState = (()=>{
-    const state = { sort:SORT.PROMPT, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
+    const state = { sort:SORT.PRIORITY, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
     try {
         const stored = JSON.parse(localStorage.getItem(ORDER_HELPER_SORT_STORAGE_KEY));
         if (Object.values(SORT).includes(stored?.sort) && Object.values(SORT_DIRECTION).includes(stored?.direction)) {
@@ -107,14 +107,66 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
     sortLogic ??= Settings.instance.sortLogic;
     sortDirection ??= Settings.instance.sortDirection;
     const x = (y)=>y.data ?? y;
-    let result;
-    let shouldReverse = true;
+    const normalizeString = (value)=>{
+        if (value === undefined || value === null) return '';
+        return String(value).toLowerCase();
+    };
+    const defaultTitle = (entry)=>entry.comment ?? (Array.isArray(entry.key) ? entry.key.join(', ') : '');
+    const defaultCompare = (a,b)=>normalizeString(defaultTitle(x(a))).localeCompare(normalizeString(defaultTitle(x(b))));
+    const stringSort = (getter)=>entries.toSorted((a,b)=>{
+        const av = normalizeString(getter(x(a)));
+        const bv = normalizeString(getter(x(b)));
+        const cmp = av.localeCompare(bv);
+        if (cmp !== 0) return cmp;
+        return defaultCompare(a, b);
+    });
+    const numericSort = (getter)=>{
+        const direction = sortDirection == SORT_DIRECTION.DESCENDING ? -1 : 1;
+        return entries.toSorted((a,b)=>{
+            const av = getter(x(a));
+            const bv = getter(x(b));
+            const hasA = Number.isFinite(av);
+            const hasB = Number.isFinite(bv);
+            if (hasA && hasB && av !== bv) return direction * (av - bv);
+            if (hasA && !hasB) return -1;
+            if (!hasA && hasB) return 1;
+            return defaultCompare(a, b);
+        });
+    };
+
+    let result = [...entries];
+    let shouldReverse = false;
     switch (sortLogic) {
-        case SORT.ALPHABETICAL: {
-            result = entries.toSorted((a,b)=>(x(a).comment || x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment || x(b).key.join(', ')).toLowerCase()));
+        case SORT.SEARCH:
+        case SORT.CUSTOM: {
+            // Preserve the current ordering
+            shouldReverse = sortDirection == SORT_DIRECTION.DESCENDING;
             break;
         }
-        case SORT.PROMPT: {
+        case SORT.ALPHABETICAL:
+        case SORT.TITLE: {
+            shouldReverse = true;
+            result = stringSort((entry)=>entry.comment ?? (Array.isArray(entry.key) ? entry.key.join(', ') : ''));
+            break;
+        }
+        case SORT.COMMENT: {
+            shouldReverse = true;
+            result = stringSort((entry)=>entry.commentary ?? '');
+            break;
+        }
+        case SORT.TRIGGER: {
+            shouldReverse = true;
+            result = stringSort((entry)=>Array.isArray(entry.key) ? entry.key.join(', ') : '');
+            break;
+        }
+        case SORT.CONTENT: {
+            shouldReverse = true;
+            result = stringSort((entry)=>entry.content ?? '');
+            break;
+        }
+        case SORT.PROMPT:
+        case SORT.PRIORITY: {
+            shouldReverse = true;
             result = entries.toSorted((a,b)=>{
                 if (x(a).position > x(b).position) return 1;
                 if (x(a).position < x(b).position) return -1;
@@ -122,45 +174,43 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
                 if ((x(a).depth ?? Number.MAX_SAFE_INTEGER) > (x(b).depth ?? Number.MAX_SAFE_INTEGER)) return -1;
                 if ((x(a).order ?? Number.MAX_SAFE_INTEGER) > (x(b).order ?? Number.MAX_SAFE_INTEGER)) return 1;
                 if ((x(a).order ?? Number.MAX_SAFE_INTEGER) < (x(b).order ?? Number.MAX_SAFE_INTEGER)) return -1;
-                return (x(a).comment ?? x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment ?? x(b).key.join(', ')).toLowerCase());
+                return defaultCompare(a, b);
             });
+            break;
+        }
+        case SORT.POSITION: {
+            result = numericSort((entry)=>Number(entry.position));
+            break;
+        }
+        case SORT.DEPTH: {
+            result = numericSort((entry)=>Number(entry.depth));
             break;
         }
         case SORT.ORDER: {
-            shouldReverse = false;
-            result = entries.toSorted((a,b)=>{
-                const getOrder = (entry)=>Number.isFinite(entry.order) ? entry.order : null;
-                const oa = getOrder(x(a));
-                const ob = getOrder(x(b));
-                const direction = sortDirection == SORT_DIRECTION.DESCENDING ? -1 : 1;
-                if (oa !== null && ob !== null && oa !== ob) {
-                    return direction * (oa - ob);
-                }
-                if (oa !== null && ob === null) return -1;
-                if (oa === null && ob !== null) return 1;
-                return (x(a).comment ?? x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment ?? x(b).key.join(', ')).toLowerCase());
-            });
+            result = numericSort((entry)=>Number(entry.order));
             break;
         }
         case SORT.UID: {
-            shouldReverse = false;
-            result = entries.toSorted((a,b)=>{
-                const direction = sortDirection == SORT_DIRECTION.DESCENDING ? -1 : 1;
-                const ua = Number(x(a).uid);
-                const ub = Number(x(b).uid);
-                const hasUa = Number.isFinite(ua);
-                const hasUb = Number.isFinite(ub);
-                if (hasUa && hasUb && ua !== ub) {
-                    return direction * (ua - ub);
-                }
-                if (hasUa && !hasUb) return -1;
-                if (!hasUa && hasUb) return 1;
-                return (x(a).comment ?? x(a).key.join(', ')).toLowerCase().localeCompare((x(b).comment ?? x(b).key.join(', ')).toLowerCase());
+            result = numericSort((entry)=>Number(entry.uid));
+            break;
+        }
+        case SORT.PROBABILITY: {
+            result = numericSort((entry)=>{
+                const value = Number(entry.selective_probability ?? entry.probability ?? entry?.selective?.probability);
+                return Number.isFinite(value) ? value : null;
+            });
+            break;
+        }
+        case SORT.LENGTH: {
+            result = numericSort((entry)=>{
+                if (typeof entry.content !== 'string') return null;
+                return entry.content.split(/\s+/).filter(Boolean).length;
             });
             break;
         }
         default: {
-            result = [...entries];
+            shouldReverse = true;
+            result = stringSort((entry)=>defaultTitle(entry));
             break;
         }
     }
@@ -456,14 +506,29 @@ const renderOrderHelper = (book = null)=>{
                 const sortSel = document.createElement('select'); {
                     sortSel.classList.add('text_pole');
                     const opts = [
-                        ['Title ↗', SORT.ALPHABETICAL, SORT_DIRECTION.ASCENDING],
-                        ['Title ↘', SORT.ALPHABETICAL, SORT_DIRECTION.DESCENDING],
-                        ['Prompt ↗', SORT.PROMPT, SORT_DIRECTION.ASCENDING],
-                        ['Prompt ↘', SORT.PROMPT, SORT_DIRECTION.DESCENDING],
+                        ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
+                        ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
+                        ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
+                        ['Title ↗', SORT.TITLE, SORT_DIRECTION.ASCENDING],
+                        ['Title ↘', SORT.TITLE, SORT_DIRECTION.DESCENDING],
+                        ['Comment ↗', SORT.COMMENT, SORT_DIRECTION.ASCENDING],
+                        ['Comment ↘', SORT.COMMENT, SORT_DIRECTION.DESCENDING],
+                        ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
+                        ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
+                        ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
+                        ['Depth ↘', SORT.DEPTH, SORT_DIRECTION.DESCENDING],
                         ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
                         ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
                         ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
                         ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
+                        ['Probability ↗', SORT.PROBABILITY, SORT_DIRECTION.ASCENDING],
+                        ['Probability ↘', SORT.PROBABILITY, SORT_DIRECTION.DESCENDING],
+                        ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
+                        ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
+                        ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
+                        ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
+                        ['Content ↗', SORT.CONTENT, SORT_DIRECTION.ASCENDING],
+                        ['Content ↘', SORT.CONTENT, SORT_DIRECTION.DESCENDING],
                     ];
                     for (const [label, sort, direction] of opts) {
                         const opt = document.createElement('option'); {
@@ -1735,14 +1800,29 @@ const addDrawer = ()=>{
                             Settings.instance.save();
                         });
                         const opts = [
-                            ['Title ↗', SORT.ALPHABETICAL, SORT_DIRECTION.ASCENDING],
-                            ['Title ↘', SORT.ALPHABETICAL, SORT_DIRECTION.DESCENDING],
-                            ['Prompt ↗', SORT.PROMPT, SORT_DIRECTION.ASCENDING],
-                            ['Prompt ↘', SORT.PROMPT, SORT_DIRECTION.DESCENDING],
+                            ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
+                            ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
+                            ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
+                            ['Title ↗', SORT.TITLE, SORT_DIRECTION.ASCENDING],
+                            ['Title ↘', SORT.TITLE, SORT_DIRECTION.DESCENDING],
+                            ['Comment ↗', SORT.COMMENT, SORT_DIRECTION.ASCENDING],
+                            ['Comment ↘', SORT.COMMENT, SORT_DIRECTION.DESCENDING],
+                            ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
+                            ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
+                            ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
+                            ['Depth ↘', SORT.DEPTH, SORT_DIRECTION.DESCENDING],
                             ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
                             ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
                             ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
                             ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
+                            ['Probability ↗', SORT.PROBABILITY, SORT_DIRECTION.ASCENDING],
+                            ['Probability ↘', SORT.PROBABILITY, SORT_DIRECTION.DESCENDING],
+                            ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
+                            ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
+                            ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
+                            ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
+                            ['Content ↗', SORT.CONTENT, SORT_DIRECTION.ASCENDING],
+                            ['Content ↘', SORT.CONTENT, SORT_DIRECTION.DESCENDING],
                         ];
                         for (const [label, sort, direction] of opts) {
                             const opt = document.createElement('option'); {

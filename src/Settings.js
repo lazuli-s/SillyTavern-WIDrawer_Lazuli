@@ -5,14 +5,36 @@ import { extension_settings } from '../../../../extensions.js';
 /** @readonly */
 /** @enum {string} */
 export const SORT = {
-    /** Alphabetical by entry comment (title/memo) */
-    ALPHABETICAL: 'alphabetical',
-    /** According to prompt depth (position-depth-order) */
-    PROMPT: 'prompt',
+    /** Keep the current list order (search results/custom manual) */
+    SEARCH: 'search',
+    /** Prioritize prompt position/depth/order */
+    PRIORITY: 'priority',
+    /** Keep user-defined ordering */
+    CUSTOM: 'custom',
+    /** Alphabetical by entry title */
+    TITLE: 'title',
+    /** Alphabetical by entry comment/notes */
+    COMMENT: 'comment',
+    /** Numeric position value */
+    POSITION: 'position',
+    /** Numeric depth value */
+    DEPTH: 'depth',
     /** By numeric order value */
     ORDER: 'order',
     /** By numeric UID */
     UID: 'uid',
+    /** By numeric probability/selective probability */
+    PROBABILITY: 'probability',
+    /** Alphabetical by trigger/keywords */
+    TRIGGER: 'trigger',
+    /** By token/word count */
+    LENGTH: 'length',
+    /** Alphabetical by content */
+    CONTENT: 'content',
+    /** Alphabetical by entry comment (title/memo) */
+    ALPHABETICAL: 'alphabetical',
+    /** According to prompt depth (position-depth-order) */
+    PROMPT: 'prompt',
 };
 /** @readonly */
 /** @enum {string} */
@@ -33,7 +55,7 @@ export class Settings {
         return this.#instance;
     }
     /**@type {SORT} */
-    sortLogic = SORT.ALPHABETICAL;
+    sortLogic = SORT.TITLE;
     /**@type {SORT_DIRECTION} */
     sortDirection = SORT_DIRECTION.ASCENDING;
 
