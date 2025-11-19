@@ -63,6 +63,8 @@ const dom = {
             /**@type {HTMLElement} */
             preview: undefined,
         },
+        /**@type {HTMLElement} */
+        selectAll: undefined,
         /**@type {{[book:string]:{[uid:string]:HTMLElement}}} */
         entries: {},
         /**@type {HTMLElement} */
@@ -383,6 +385,36 @@ const updateOrderHelperPreview = (entries)=>{
     dom.order.filter.preview.textContent = JSON.stringify(Object.assign({ book:previewEntry.book }, previewEntry.data), null, 2);
 };
 
+const getOrderHelperRows = ()=>[...(dom.order.tbody?.querySelectorAll('tr') ?? [])];
+
+const isOrderHelperRowSelected = (row)=>row?.classList.contains('stwid--applySelected');
+
+const setOrderHelperRowSelected = (row, selected)=>{
+    if (!row) return;
+    row.classList.toggle('stwid--applySelected', selected);
+    row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    const icon = row.querySelector('.stwid--orderSelect .stwid--icon');
+    if (icon) {
+        icon.classList.toggle('fa-square', !selected);
+        icon.classList.toggle('fa-square-check', selected);
+    }
+};
+
+const setAllOrderHelperRowSelected = (selected)=>{
+    for (const row of getOrderHelperRows()) {
+        setOrderHelperRowSelected(row, selected);
+    }
+};
+
+const updateOrderHelperSelectAllButton = ()=>{
+    if (!dom.order.selectAll) return;
+    const rows = getOrderHelperRows();
+    const allSelected = rows.length > 0 && rows.every(isOrderHelperRowSelected);
+    dom.order.selectAll.classList.toggle('stwid--active', allSelected);
+    dom.order.selectAll.classList.toggle('fa-square-check', allSelected);
+    dom.order.selectAll.classList.toggle('fa-square', !allSelected);
+};
+
 const applyOrderHelperSortToDom = ()=>{
     if (!dom.order.tbody) return;
     const entries = getOrderHelperEntries(orderHelperState.book, true);
@@ -481,6 +513,19 @@ const renderOrderHelper = (book = null)=>{
                     }
                 });
                 actions.append(filterToggle);
+            }
+            const selectAll = document.createElement('div'); {
+                dom.order.selectAll = selectAll;
+                selectAll.classList.add('menu_button');
+                selectAll.classList.add('fa-solid', 'fa-fw', 'fa-square-check', 'stwid--active');
+                selectAll.title = 'Select/unselect all entries for applying Order values';
+                selectAll.addEventListener('click', ()=>{
+                    const rows = getOrderHelperRows();
+                    const shouldSelect = !rows.length || rows.some(row=>!isOrderHelperRowSelected(row));
+                    setAllOrderHelperRowSelected(shouldSelect);
+                    updateOrderHelperSelectAllButton();
+                });
+                actions.append(selectAll);
             }
             const startLbl = document.createElement('label'); {
                 startLbl.classList.add('stwid--inputWrap');
@@ -585,6 +630,7 @@ const renderOrderHelper = (book = null)=>{
                     if (up) rows.reverse();
                     for (const tr of rows) {
                         if (tr.classList.contains('stwid--isFiltered')) continue;
+                        if (!isOrderHelperRowSelected(tr)) continue;
                         const bookName = tr.getAttribute('data-book');
                         const uid = tr.getAttribute('data-uid');
                         if (!books.includes(bookName)) books.push(bookName);
@@ -702,7 +748,7 @@ const renderOrderHelper = (book = null)=>{
                 tbl.classList.add('stwid--orderTable');
                 const thead = document.createElement('thead'); {
                     const tr = document.createElement('tr'); {
-                        for (const col of ['', '', 'Entry', 'Strat', 'Position', 'Depth', 'Order', 'Trigg %']) {
+                        for (const col of ['', '', '', 'Entry', 'Strat', 'Position', 'Depth', 'Order', 'Trigg %']) {
                             const th = document.createElement('th'); {
                                 th.textContent = col;
                                 tr.append(th);
@@ -726,6 +772,23 @@ const renderOrderHelper = (book = null)=>{
                                 dom.order.entries[e.book] = {};
                             }
                             dom.order.entries[e.book][e.data.uid] = tr;
+                            const select = document.createElement('td'); {
+                                const btn = document.createElement('div'); {
+                                    btn.classList.add('stwid--orderSelect');
+                                    btn.classList.add('fa-solid', 'fa-fw');
+                                    btn.title = 'Toggle selection for applying Order values';
+                                    const icon = document.createElement('i'); {
+                                        icon.classList.add('fa-solid', 'fa-fw', 'stwid--icon');
+                                        btn.append(icon);
+                                    }
+                                    btn.addEventListener('click', ()=>{
+                                        setOrderHelperRowSelected(tr, !isOrderHelperRowSelected(tr));
+                                        updateOrderHelperSelectAllButton();
+                                    });
+                                    select.append(btn);
+                                }
+                                tr.append(select);
+                            }
                             const handle = document.createElement('td'); {
                                 const i = document.createElement('div'); {
                                     i.classList.add('stwid--sortableHandle');
@@ -882,9 +945,11 @@ const renderOrderHelper = (book = null)=>{
                                 }
                                 tr.append(probability);
                             }
+                            setOrderHelperRowSelected(tr, true);
                             tbody.append(tr);
                         }
                     }
+                    updateOrderHelperSelectAllButton();
                     tbl.append(tbody);
                 }
                 wrap.append(tbl);

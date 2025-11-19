@@ -472,21 +472,24 @@ body.stwid-- #WorldInfo {
 		z-index: 1;
 		font-size: smaller;
 	}
-	tr {
-		border-bottom: 5px solid var(--SmartThemeBorderColor);
-		transition: 200ms;
-		background-color: var(--primaryBgCol, var(--SmartThemeBlurTintColor));
-		&:hover {
-			background-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 50%, transparent 50%);
-		}
-		&.stwid--isFiltered {
-			display: none;
-		}
-		&:has(.stwid--enabled.fa-toggle-off) {
-			opacity: 0.5;
-		}
-		th, td {
-			text-align: left;
+        tr {
+                border-bottom: 5px solid var(--SmartThemeBorderColor);
+                transition: 200ms;
+                background-color: var(--primaryBgCol, var(--SmartThemeBlurTintColor));
+                &:hover {
+                        background-color: color-mix(in srgb, var(--SmartThemeQuoteColor) 50%, transparent 50%);
+                }
+                &.stwid--isFiltered {
+                        display: none;
+                }
+                &:not(.stwid--applySelected) {
+                        opacity: 0.6;
+                }
+                &:has(.stwid--enabled.fa-toggle-off) {
+                        opacity: 0.5;
+                }
+                th, td {
+                        text-align: left;
 			padding: 0 1em;
 			width: 0;
 		}
@@ -494,15 +497,30 @@ body.stwid-- #WorldInfo {
 			color: rgb(from var(--SmartThemeBodyColor) r g b / 0.75);
 			font-size: small;
 
-			.stwid--sortableHandle {
-				cursor: pointer;
-				opacity: 0.5;
-				padding: 4px;
-				transition: 200ms;
-				&:hover {
-					opacity: 1;
-				}
-			}
+                        .stwid--sortableHandle {
+                                cursor: pointer;
+                                opacity: 0.5;
+                                padding: 4px;
+                                transition: 200ms;
+                                &:hover {
+                                        opacity: 1;
+                                }
+                        }
+                        .stwid--orderSelect {
+                                color: var(--SmartThemeQuoteColor);
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 0.25em;
+                                transition: 200ms;
+                                &:hover {
+                                        opacity: 0.8;
+                                }
+                                .stwid--icon {
+                                        pointer-events: none;
+                                }
+                        }
             [name="depth"] {
                 display: none;
             }
