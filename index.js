@@ -149,19 +149,9 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
             result = stringSort((entry)=>entry.comment ?? (Array.isArray(entry.key) ? entry.key.join(', ') : ''));
             break;
         }
-        case SORT.COMMENT: {
-            shouldReverse = true;
-            result = stringSort((entry)=>entry.commentary ?? '');
-            break;
-        }
         case SORT.TRIGGER: {
             shouldReverse = true;
             result = stringSort((entry)=>Array.isArray(entry.key) ? entry.key.join(', ') : '');
-            break;
-        }
-        case SORT.CONTENT: {
-            shouldReverse = true;
-            result = stringSort((entry)=>entry.content ?? '');
             break;
         }
         case SORT.PROMPT:
@@ -192,13 +182,6 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
         }
         case SORT.UID: {
             result = numericSort((entry)=>Number(entry.uid));
-            break;
-        }
-        case SORT.PROBABILITY: {
-            result = numericSort((entry)=>{
-                const value = Number(entry.selective_probability ?? entry.probability ?? entry?.selective?.probability);
-                return Number.isFinite(value) ? value : null;
-            });
             break;
         }
         case SORT.LENGTH: {
@@ -509,10 +492,8 @@ const renderOrderHelper = (book = null)=>{
                         ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
                         ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
                         ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
-                        ['Title ↗', SORT.TITLE, SORT_DIRECTION.ASCENDING],
-                        ['Title ↘', SORT.TITLE, SORT_DIRECTION.DESCENDING],
-                        ['Comment ↗', SORT.COMMENT, SORT_DIRECTION.ASCENDING],
-                        ['Comment ↘', SORT.COMMENT, SORT_DIRECTION.DESCENDING],
+                        ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
+                        ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
                         ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
                         ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
                         ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
@@ -521,14 +502,10 @@ const renderOrderHelper = (book = null)=>{
                         ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
                         ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
                         ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
-                        ['Probability ↗', SORT.PROBABILITY, SORT_DIRECTION.ASCENDING],
-                        ['Probability ↘', SORT.PROBABILITY, SORT_DIRECTION.DESCENDING],
                         ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
                         ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
                         ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
                         ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
-                        ['Content ↗', SORT.CONTENT, SORT_DIRECTION.ASCENDING],
-                        ['Content ↘', SORT.CONTENT, SORT_DIRECTION.DESCENDING],
                     ];
                     for (const [label, sort, direction] of opts) {
                         const opt = document.createElement('option'); {
@@ -1803,10 +1780,8 @@ const addDrawer = ()=>{
                             ['Search', SORT.SEARCH, SORT_DIRECTION.ASCENDING],
                             ['Priority', SORT.PRIORITY, SORT_DIRECTION.ASCENDING],
                             ['Custom', SORT.CUSTOM, SORT_DIRECTION.ASCENDING],
-                            ['Title ↗', SORT.TITLE, SORT_DIRECTION.ASCENDING],
-                            ['Title ↘', SORT.TITLE, SORT_DIRECTION.DESCENDING],
-                            ['Comment ↗', SORT.COMMENT, SORT_DIRECTION.ASCENDING],
-                            ['Comment ↘', SORT.COMMENT, SORT_DIRECTION.DESCENDING],
+                            ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
+                            ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
                             ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
                             ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
                             ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
@@ -1815,14 +1790,10 @@ const addDrawer = ()=>{
                             ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
                             ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
                             ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
-                            ['Probability ↗', SORT.PROBABILITY, SORT_DIRECTION.ASCENDING],
-                            ['Probability ↘', SORT.PROBABILITY, SORT_DIRECTION.DESCENDING],
                             ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
                             ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
                             ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
                             ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
-                            ['Content ↗', SORT.CONTENT, SORT_DIRECTION.ASCENDING],
-                            ['Content ↘', SORT.CONTENT, SORT_DIRECTION.DESCENDING],
                         ];
                         for (const [label, sort, direction] of opts) {
                             const opt = document.createElement('option'); {

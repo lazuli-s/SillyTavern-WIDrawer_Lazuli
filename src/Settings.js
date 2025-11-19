@@ -13,8 +13,6 @@ export const SORT = {
     CUSTOM: 'custom',
     /** Alphabetical by entry title */
     TITLE: 'title',
-    /** Alphabetical by entry comment/notes */
-    COMMENT: 'comment',
     /** Numeric position value */
     POSITION: 'position',
     /** Numeric depth value */
@@ -23,14 +21,10 @@ export const SORT = {
     ORDER: 'order',
     /** By numeric UID */
     UID: 'uid',
-    /** By numeric probability/selective probability */
-    PROBABILITY: 'probability',
     /** Alphabetical by trigger/keywords */
     TRIGGER: 'trigger',
     /** By token/word count */
     LENGTH: 'length',
-    /** Alphabetical by content */
-    CONTENT: 'content',
     /** Alphabetical by entry comment (title/memo) */
     ALPHABETICAL: 'alphabetical',
     /** According to prompt depth (position-depth-order) */
@@ -62,6 +56,13 @@ export class Settings {
     constructor() {
         Object.assign(this, extension_settings.wordInfoDrawer ?? {});
         extension_settings.wordInfoDrawer = this;
+
+        if (!Object.values(SORT).includes(this.sortLogic)) {
+            this.sortLogic = SORT.TITLE;
+        }
+        if (!Object.values(SORT_DIRECTION).includes(this.sortDirection)) {
+            this.sortDirection = SORT_DIRECTION.ASCENDING;
+        }
     }
 
     toJSON() {
