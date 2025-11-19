@@ -346,13 +346,19 @@ body.stwid-- #WorldInfo {
 
 
 .stwid--orderHelper {
-	display: flex;
-	flex-direction: column;
+        display: flex;
+        flex-direction: column;
 
-	overflow: hidden;
+        overflow: hidden;
 
-	.stwid--actions {
-		flex: 0 0 auto;
+        &.stwid--hideKeys {
+                .stwid--key {
+                        display: none;
+                }
+        }
+
+        .stwid--actions {
+                flex: 0 0 auto;
 
 		display: flex;
 		gap: 1.5em;
