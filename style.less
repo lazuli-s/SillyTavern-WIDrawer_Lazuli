@@ -337,11 +337,22 @@ body.stwid-- #WorldInfo {
 				width: 1.25em;
 				text-align: center;
 			}
-			.stwid--label {
-				flex: 1 1 auto;
-			}
-		}
-	}
+                        .stwid--label {
+                                flex: 1 1 auto;
+                        }
+
+                        &.stwid--bookSort {
+                                opacity: 1;
+                                cursor: default;
+
+                                select {
+                                        width: 100%;
+                                        color: inherit;
+                                        background-color: rgb(255 255 255 / 0.05);
+                                }
+                        }
+                }
+        }
 }
 
 

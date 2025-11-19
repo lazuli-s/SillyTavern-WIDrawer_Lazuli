@@ -315,11 +315,20 @@ body.stwid-- #WorldInfo .stwid--editor [name="WIEntryBottomControls"] {
   text-align: center;
 }
 .stwid--blocker .stwid--menu .stwid--item .stwid--label {
-  flex: 1 1 auto;
+    flex: 1 1 auto;
+}
+.stwid--blocker .stwid--menu .stwid--item.stwid--bookSort {
+    opacity: 1;
+    cursor: default;
+}
+.stwid--blocker .stwid--menu .stwid--item.stwid--bookSort select {
+    width: 100%;
+    color: inherit;
+    background-color: rgba(255, 255, 255, 0.05);
 }
 .stwid--orderHelper {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
   overflow: hidden;
 }
 .stwid--orderHelper.stwid--hideKeys .stwid--key {
