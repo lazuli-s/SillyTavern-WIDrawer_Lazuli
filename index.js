@@ -71,14 +71,20 @@ const dom = {
 };
 
 const ORDER_HELPER_SORT_STORAGE_KEY = 'stwid--order-helper-sort';
+const ORDER_HELPER_HIDE_KEYS_STORAGE_KEY = 'stwid--order-helper-hide-keys';
 const orderHelperState = (()=>{
+    const state = { sort:SORT.PROMPT, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
     try {
         const stored = JSON.parse(localStorage.getItem(ORDER_HELPER_SORT_STORAGE_KEY));
         if (Object.values(SORT).includes(stored?.sort) && Object.values(SORT_DIRECTION).includes(stored?.direction)) {
-            return { ...stored, book:null };
+            state.sort = stored.sort;
+            state.direction = stored.direction;
         }
     } catch { /* empty */ }
-    return { sort:SORT.PROMPT, direction:SORT_DIRECTION.ASCENDING, book:null };
+    try {
+        state.hideKeys = localStorage.getItem(ORDER_HELPER_HIDE_KEYS_STORAGE_KEY) === 'true';
+    } catch { /* empty */ }
+    return state;
 })();
 /**@type {{name:string, uid:string}} */
 let currentEditor;
@@ -409,6 +415,7 @@ const renderOrderHelper = (book = null)=>{
     const entries = getOrderHelperEntries(book);
     const body = document.createElement('div'); {
         body.classList.add('stwid--orderHelper');
+        body.classList.toggle('stwid--hideKeys', orderHelperState.hideKeys);
         const actions = document.createElement('div'); {
             actions.classList.add('stwid--actions');
             const sortWrap = document.createElement('label'); {
@@ -444,6 +451,24 @@ const renderOrderHelper = (book = null)=>{
                     sortWrap.append(sortSel);
                 }
                 actions.append(sortWrap);
+            }
+            const keyToggle = document.createElement('div'); {
+                keyToggle.classList.add('menu_button');
+                keyToggle.classList.add('fa-solid', 'fa-fw');
+                keyToggle.title = 'Toggle keyword visibility';
+                const applyKeyToggleStyle = ()=>{
+                    keyToggle.classList.toggle('fa-eye', !orderHelperState.hideKeys);
+                    keyToggle.classList.toggle('fa-eye-slash', orderHelperState.hideKeys);
+                    keyToggle.classList.toggle('stwid--active', orderHelperState.hideKeys);
+                };
+                applyKeyToggleStyle();
+                keyToggle.addEventListener('click', ()=>{
+                    orderHelperState.hideKeys = !orderHelperState.hideKeys;
+                    localStorage.setItem(ORDER_HELPER_HIDE_KEYS_STORAGE_KEY, orderHelperState.hideKeys);
+                    body.classList.toggle('stwid--hideKeys', orderHelperState.hideKeys);
+                    applyKeyToggleStyle();
+                });
+                actions.append(keyToggle);
             }
             const filterToggle = document.createElement('div'); {
                 filterToggle.classList.add('menu_button');
