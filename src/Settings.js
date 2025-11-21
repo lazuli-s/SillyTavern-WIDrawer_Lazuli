@@ -46,6 +46,8 @@ export class Settings {
     sortLogic = SORT.TITLE;
     /**@type {SORT_DIRECTION} */
     sortDirection = SORT_DIRECTION.ASCENDING;
+    /**@type {boolean} */
+    useBookSorts = true;
 
     constructor() {
         Object.assign(this, extension_settings.wordInfoDrawer ?? {});
@@ -57,12 +59,16 @@ export class Settings {
         if (!Object.values(SORT_DIRECTION).includes(this.sortDirection)) {
             this.sortDirection = SORT_DIRECTION.ASCENDING;
         }
+        if (typeof this.useBookSorts !== 'boolean') {
+            this.useBookSorts = true;
+        }
     }
 
     toJSON() {
         return {
             sortLogic: this.sortLogic,
             sortDirection: this.sortDirection,
+            useBookSorts: this.useBookSorts,
         };
     }
 

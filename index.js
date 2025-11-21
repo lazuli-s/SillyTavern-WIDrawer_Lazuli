@@ -74,6 +74,39 @@ const dom = {
 
 const ORDER_HELPER_SORT_STORAGE_KEY = 'stwid--order-helper-sort';
 const ORDER_HELPER_HIDE_KEYS_STORAGE_KEY = 'stwid--order-helper-hide-keys';
+/**
+ * Sort options available to dropdowns. Each tuple is
+ * [Label, Sort Logic, Sort Direction].
+ * @type {[string, SORT, SORT_DIRECTION][]}
+ */
+const SORT_OPTIONS = [
+    ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
+    ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
+    ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
+    ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
+    ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
+    ['Depth ↘', SORT.DEPTH, SORT_DIRECTION.DESCENDING],
+    ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
+    ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
+    ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
+    ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
+    ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
+    ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
+    ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
+    ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
+];
+
+const appendSortOptions = (select, currentSort, currentDirection)=>{
+    for (const [label, sort, direction] of SORT_OPTIONS) {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify({ sort, direction });
+        opt.textContent = label;
+        opt.selected = sort == currentSort && direction == currentDirection;
+        select.append(opt);
+    }
+};
+
+const getSortLabel = (sort, direction)=>SORT_OPTIONS.find(([label, s, d])=>s === sort && d === direction)?.[0];
 const orderHelperState = (()=>{
     const state = { sort:SORT.TITLE, direction:SORT_DIRECTION.ASCENDING, book:null, hideKeys:false };
     try {
@@ -194,8 +227,66 @@ const sortEntries = (entries, sortLogic = null, sortDirection = null)=>{
     return result;
 };
 
+const cache = {};
+
+const METADATA_NAMESPACE = 'stwid';
+const METADATA_SORT_KEY = 'sort';
+const cloneMetadata = (metadata)=>structuredClone(metadata ?? {});
+const getSortFromMetadata = (metadata)=>{
+    const sortData = metadata?.[METADATA_NAMESPACE]?.[METADATA_SORT_KEY];
+    if (!sortData) return null;
+    const sort = sortData.sort ?? sortData.logic ?? sortData.sortLogic;
+    const direction = sortData.direction ?? sortData.sortDirection;
+    if (!Object.values(SORT).includes(sort) || !Object.values(SORT_DIRECTION).includes(direction)) return null;
+    return { sort, direction };
+};
+const getBookSortChoice = (name)=>{
+    const bookSort = Settings.instance.useBookSorts ? cache[name]?.sort : null;
+    return {
+        sort: bookSort?.sort ?? Settings.instance.sortLogic,
+        direction: bookSort?.direction ?? Settings.instance.sortDirection,
+    };
+};
+const setCacheMetadata = (name, metadata = {})=>{
+    cache[name].metadata = cloneMetadata(metadata);
+    cache[name].sort = getSortFromMetadata(cache[name].metadata);
+};
+const buildSavePayload = (name)=>({
+    entries: structuredClone(cache[name].entries),
+    metadata: cloneMetadata(cache[name].metadata),
+});
+const setBookSortPreference = async(name, sort = null, direction = null)=>{
+    const hasSort = Boolean(sort && direction);
+    cache[name].metadata ??= {};
+    cache[name].metadata[METADATA_NAMESPACE] ??= {};
+    if (hasSort) {
+        cache[name].metadata[METADATA_NAMESPACE][METADATA_SORT_KEY] = { sort, direction };
+        cache[name].sort = { sort, direction };
+    } else {
+        delete cache[name].metadata[METADATA_NAMESPACE][METADATA_SORT_KEY];
+        if (Object.keys(cache[name].metadata[METADATA_NAMESPACE]).length === 0) {
+            delete cache[name].metadata[METADATA_NAMESPACE];
+        }
+        if (Object.keys(cache[name].metadata).length === 0) {
+            cache[name].metadata = {};
+        }
+        cache[name].sort = null;
+    }
+    await saveWorldInfo(name, buildSavePayload(name), true);
+    sortEntriesIfNeeded(name);
+};
+
+const clearBookSortPreferences = async()=>{
+    for (const [name, data] of Object.entries(cache)) {
+        const hasSortPreference = Boolean(data.metadata?.[METADATA_NAMESPACE]?.[METADATA_SORT_KEY]);
+        if (!hasSortPreference) continue;
+        await setBookSortPreference(name, null, null);
+    }
+};
+
 const sortEntriesIfNeeded = (name)=>{
-    const sorted = sortEntries(Object.values(cache[name].entries));
+    const { sort, direction } = getBookSortChoice(name);
+    const sorted = sortEntries(Object.values(cache[name].entries), sort, direction);
     let needsSort = false;
     let i = 0;
     for (const e of sorted) {
@@ -211,8 +302,6 @@ const sortEntriesIfNeeded = (name)=>{
         }
     }
 };
-
-const cache = {};
 const updateSettingsChange = ()=>{
     console.log('[STWID]', '[UPDATE-SETTINGS]');
     for (const [name, world] of Object.entries(cache)) {
@@ -242,16 +331,17 @@ const updateWIChange = async(name = null, data = null)=>{
         if (cache[name]) continue;
         else {
             const before = Object.keys(cache).find(it=>it.toLowerCase().localeCompare(name.toLowerCase()) == 1);
-            cache[name] = { entries:{} };
             const data = await loadWorldInfo(name);
-            for (const [k,v] of Object.entries(data.entries)) {
-                cache[name].entries[k] = structuredClone(v);
-            }
-            renderBook(name, before ? cache[before].dom.root : null);
+            await renderBook(name, before ? cache[before].dom.root : null, data);
         }
     }
     if (name && cache[name]) {
-        const world = { entries:{} };
+        const world = { entries:{}, metadata: cloneMetadata(data.metadata) };
+        const updatedSort = getSortFromMetadata(world.metadata) ?? cache[name].sort;
+        const sortChoice = {
+            sort: updatedSort?.sort ?? Settings.instance.sortLogic,
+            direction: updatedSort?.direction ?? Settings.instance.sortDirection,
+        };
         for (const [k,v] of Object.entries(data.entries)) {
             world.entries[k] = structuredClone(v);
         }
@@ -271,7 +361,7 @@ const updateWIChange = async(name = null, data = null)=>{
         for (const e of Object.keys(world.entries)) {
             if (cache[name].entries[e]) continue;
             let a = world.entries[e];
-            const sorted = sortEntries([...Object.values(cache[name].entries), ...alreadyAdded, a]);
+            const sorted = sortEntries([...Object.values(cache[name].entries), ...alreadyAdded, a], sortChoice.sort, sortChoice.direction);
             const before = sorted.find((it,idx)=>idx > sorted.indexOf(a));
             await renderEntry(a, name, before ? cache[name].dom.entry[before.uid].root : null);
             alreadyAdded.push(a);
@@ -339,7 +429,10 @@ const updateWIChange = async(name = null, data = null)=>{
             }
         }
         cache[name].entries = world.entries;
-        if (hasUpdate) {
+        const prevSort = cache[name].sort;
+        setCacheMetadata(name, world.metadata);
+        const sortChanged = JSON.stringify(prevSort) !== JSON.stringify(cache[name].sort);
+        if (hasUpdate || sortChanged) {
             sortEntriesIfNeeded(name);
         }
     }
@@ -481,30 +574,7 @@ const renderOrderHelper = (book = null)=>{
                 sortWrap.append('Sort: ');
                 const sortSel = document.createElement('select'); {
                     sortSel.classList.add('text_pole');
-                    const opts = [
-                        ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
-                        ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
-                        ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
-                        ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
-                        ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
-                        ['Depth ↘', SORT.DEPTH, SORT_DIRECTION.DESCENDING],
-                        ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
-                        ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
-                        ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
-                        ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
-                        ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
-                        ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
-                        ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
-                        ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
-                    ];
-                    for (const [label, sort, direction] of opts) {
-                        const opt = document.createElement('option'); {
-                            opt.value = JSON.stringify({ sort, direction });
-                            opt.textContent = label;
-                            opt.selected = orderHelperState.sort == sort && orderHelperState.direction == direction;
-                            sortSel.append(opt);
-                        }
-                    }
+                    appendSortOptions(sortSel, orderHelperState.sort, orderHelperState.direction);
                     sortSel.addEventListener('change', ()=>{
                         const value = JSON.parse(sortSel.value);
                         orderHelperState.sort = value.sort;
@@ -671,7 +741,7 @@ const renderOrderHelper = (book = null)=>{
                         order += step;
                     }
                     for (const bookName of books) {
-                        await saveWorldInfo(bookName, { entries:cache[bookName].entries }, true);
+                        await saveWorldInfo(bookName, buildSavePayload(bookName), true);
                     }
                 });
                 actions.append(apply);
@@ -842,7 +912,7 @@ const renderOrderHelper = (book = null)=>{
                                         cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-off');
                                         cache[e.book].dom.entry[e.data.uid].isEnabled.classList.toggle('fa-toggle-on');
                                         cache[e.book].entries[e.data.uid].disable = dis;
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     active.append(isEnabled);
                                 }
@@ -902,7 +972,7 @@ const renderOrderHelper = (book = null)=>{
                                                 break;
                                             }
                                         }
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     strategy.append(strat);
                                 }
@@ -917,7 +987,7 @@ const renderOrderHelper = (book = null)=>{
                                         const value = pos.value;
                                         cache[e.book].dom.entry[e.data.uid].position.value = value;
                                         cache[e.book].entries[e.data.uid].position = value;
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     position.append(pos);
                                 }
@@ -935,7 +1005,7 @@ const renderOrderHelper = (book = null)=>{
                                     inp.addEventListener('change', async()=>{
                                         const depth = parseInt(inp.value);
                                         cache[e.book].entries[e.data.uid].depth = Number.isFinite(depth) ? depth : undefined;
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     depth.append(inp);
                                 }
@@ -953,7 +1023,7 @@ const renderOrderHelper = (book = null)=>{
                                     inp.addEventListener('change', async()=>{
                                         const order = parseInt(inp.value);
                                         cache[e.book].entries[e.data.uid].order = Number.isFinite(order) ? order : undefined;
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     order.append(inp);
                                 }
@@ -971,7 +1041,7 @@ const renderOrderHelper = (book = null)=>{
                                     inp.addEventListener('change', async()=>{
                                         const probability = parseInt(inp.value);
                                         cache[e.book].entries[e.data.uid].selective_probability = Number.isFinite(probability) ? probability : undefined;
-                                        await saveWorldInfo(e.book, { entries:cache[e.book].entries }, true);
+                                        await saveWorldInfo(e.book, buildSavePayload(e.book), true);
                                     });
                                     probability.append(inp);
                                 }
@@ -1053,7 +1123,7 @@ const selectRemove = (entry)=>{
 };
 const renderBook = async(name, before = null, bookData = null)=>{
     const data = bookData ?? await loadWorldInfo(name);
-    const world = { entries:{} };
+    const world = { entries:{}, metadata: cloneMetadata(data.metadata), sort:getSortFromMetadata(data.metadata) };
     for (const [k,v] of Object.entries(data.entries)) {
         world.entries[k] = structuredClone(v);
     }
@@ -1150,7 +1220,7 @@ const renderBook = async(name, before = null, bookData = null)=>{
                     add.classList.add('fa-solid', 'fa-fw', 'fa-plus');
                     add.title = 'New Entry';
                     add.addEventListener('click', async()=>{
-                        const data = { entries:structuredClone(cache[name].entries) };
+                        const data = buildSavePayload(name);
                         const newEntry = createWorldInfoEntry(name, data);
                         cache[name].entries[newEntry.uid] = structuredClone(newEntry);
                         await renderEntry(newEntry, name);
@@ -1277,6 +1347,46 @@ const renderBook = async(name, before = null, bookData = null)=>{
                                     }
                                     menu.append(fillTitles);
                                 }
+                                const bookSort = document.createElement('div'); {
+                                    bookSort.classList.add('stwid--item');
+                                    bookSort.classList.add('stwid--bookSort');
+                                    bookSort.addEventListener('click', (evt)=>evt.stopPropagation());
+                                    const i = document.createElement('i'); {
+                                        i.classList.add('stwid--icon');
+                                        i.classList.add('fa-solid', 'fa-fw', 'fa-list-ol');
+                                        bookSort.append(i);
+                                    }
+                                    const label = document.createElement('span'); {
+                                        label.classList.add('stwid--label');
+                                        label.textContent = 'Book Sort';
+                                        bookSort.append(label);
+                                    }
+                                    const sortSelect = document.createElement('select'); {
+                                        sortSelect.classList.add('text_pole');
+                                        sortSelect.addEventListener('click', (evt)=>evt.stopPropagation());
+                                        const hasCustomSort = Boolean(cache[name].sort);
+                                        const globalLabel = getSortLabel(Settings.instance.sortLogic, Settings.instance.sortDirection) ?? 'Global default';
+                                        const globalOpt = document.createElement('option'); {
+                                            globalOpt.value = 'null';
+                                            globalOpt.textContent = `Use global (${globalLabel})`;
+                                            globalOpt.selected = !hasCustomSort;
+                                            sortSelect.append(globalOpt);
+                                        }
+                                        appendSortOptions(sortSelect, cache[name].sort?.sort, cache[name].sort?.direction);
+                                        sortSelect.addEventListener('change', async()=>{
+                                            const value = sortSelect.value === 'null' ? null : JSON.parse(sortSelect.value);
+                                            if (value) {
+                                                await setBookSortPreference(name, value.sort, value.direction);
+                                            } else {
+                                                await setBookSortPreference(name, null, null);
+                                            }
+                                            blocker.remove();
+                                            menuTrigger.style.anchorName = '';
+                                        });
+                                    }
+                                    bookSort.append(sortSelect);
+                                    menu.append(bookSort);
+                                }
                                 const orderHelper = document.createElement('div'); {
                                     orderHelper.classList.add('stwid--item');
                                     orderHelper.classList.add('stwid--orderHelper');
@@ -1391,7 +1501,8 @@ const renderBook = async(name, before = null, bookData = null)=>{
             world.dom.entryList = entryList;
             entryList.classList.add('stwid--entryList');
             entryList.classList.add('stwid--isCollapsed');
-            for (const e of sortEntries(Object.values(world.entries))) {
+            const { sort, direction } = getBookSortChoice(name);
+            for (const e of sortEntries(Object.values(world.entries), sort, direction)) {
                 await renderEntry(e, name);
             }
             book.append(entryList);
@@ -1518,7 +1629,7 @@ const renderEntry = async(e, name, before = null)=>{
                     const dis = isEnabled.classList.toggle('fa-toggle-off');
                     isEnabled.classList.toggle('fa-toggle-on');
                     cache[name].entries[e.uid].disable = dis;
-                    await saveWorldInfo(name, { entries:cache[name].entries }, true);
+                    await saveWorldInfo(name, buildSavePayload(name), true);
                 });
                 status.append(isEnabled);
             }
@@ -1545,7 +1656,7 @@ const renderEntry = async(e, name, before = null)=>{
                             break;
                         }
                     }
-                    await saveWorldInfo(name, { entries:cache[name].entries }, true);
+                    await saveWorldInfo(name, buildSavePayload(name), true);
                 });
                 status.append(strat);
             }
@@ -1658,6 +1769,8 @@ const addDrawer = ()=>{
                 list.classList.add('stwid--list');
                     const controls = document.createElement('div'); {
                         controls.classList.add('stwid--controls');
+                        const controlsPrimary = document.createElement('div');
+                        controlsPrimary.classList.add('stwid--controlsRow');
                         const add = /**@type {HTMLElement}*/(document.querySelector('#world_create_button').cloneNode(true)); {
                             add.removeAttribute('id');
                             add.classList.add('stwid--addBook');
@@ -1679,7 +1792,7 @@ const addDrawer = ()=>{
                                 }
                             }
                         });
-                        controls.append(add);
+                        controlsPrimary.append(add);
                     }
                     const imp = document.createElement('div'); {
                         imp.classList.add('menu_button');
@@ -1688,7 +1801,7 @@ const addDrawer = ()=>{
                         imp.addEventListener('click', ()=>{
                             /**@type {HTMLInputElement}*/(document.querySelector('#world_import_file')).click();
                         });
-                        controls.append(imp);
+                        controlsPrimary.append(imp);
                     }
                     const refresh = document.createElement('div'); {
                         refresh.classList.add('menu_button');
@@ -1706,7 +1819,7 @@ const addDrawer = ()=>{
                                 dom.drawer.body.classList.remove('stwid--isLoading');
                             }
                         });
-                        controls.append(refresh);
+                        controlsPrimary.append(refresh);
                     }
                     const settings = document.createElement('div'); {
                         dom.activationToggle = settings;
@@ -1737,7 +1850,7 @@ const addDrawer = ()=>{
                                 dom.editor.innerHTML = '';
                             }
                         });
-                        controls.append(settings);
+                        controlsPrimary.append(settings);
                     }
                     const order = document.createElement('div'); {
                         dom.order.toggle = order;
@@ -1754,8 +1867,10 @@ const addDrawer = ()=>{
                             }
                             openOrderHelper();
                         });
-                        controls.append(order);
+                        controlsPrimary.append(order);
                     }
+                    const controlsSecondary = document.createElement('div');
+                    controlsSecondary.classList.add('stwid--controlsRow');
                     const sortSel = document.createElement('select'); {
                         sortSel.classList.add('text_pole');
                         sortSel.addEventListener('change', ()=>{
@@ -1767,32 +1882,64 @@ const addDrawer = ()=>{
                             }
                             Settings.instance.save();
                         });
-                        const opts = [
-                            ['Title A-Z', SORT.TITLE, SORT_DIRECTION.ASCENDING],
-                            ['Title Z-A', SORT.TITLE, SORT_DIRECTION.DESCENDING],
-                            ['Position ↗', SORT.POSITION, SORT_DIRECTION.ASCENDING],
-                            ['Position ↘', SORT.POSITION, SORT_DIRECTION.DESCENDING],
-                            ['Depth ↗', SORT.DEPTH, SORT_DIRECTION.ASCENDING],
-                            ['Depth ↘', SORT.DEPTH, SORT_DIRECTION.DESCENDING],
-                            ['Order ↗', SORT.ORDER, SORT_DIRECTION.ASCENDING],
-                            ['Order ↘', SORT.ORDER, SORT_DIRECTION.DESCENDING],
-                            ['UID ↗', SORT.UID, SORT_DIRECTION.ASCENDING],
-                            ['UID ↘', SORT.UID, SORT_DIRECTION.DESCENDING],
-                            ['Trigger ↗', SORT.TRIGGER, SORT_DIRECTION.ASCENDING],
-                            ['Trigger ↘', SORT.TRIGGER, SORT_DIRECTION.DESCENDING],
-                            ['Tokens ↗', SORT.LENGTH, SORT_DIRECTION.ASCENDING],
-                            ['Tokens ↘', SORT.LENGTH, SORT_DIRECTION.DESCENDING],
-                        ];
-                        for (const [label, sort, direction] of opts) {
-                            const opt = document.createElement('option'); {
-                                opt.value = JSON.stringify({ sort, direction });
-                                opt.textContent = label;
-                                opt.selected = sort == Settings.instance.sortLogic && direction == Settings.instance.sortDirection;
-                                sortSel.append(opt);
-                            }
-                        }
-                        controls.append(sortSel);
+                        appendSortOptions(sortSel, Settings.instance.sortLogic, Settings.instance.sortDirection);
+                        controlsSecondary.append(sortSel);
                     }
+                    const bookSortToggle = document.createElement('button'); {
+                        bookSortToggle.type = 'button';
+                        bookSortToggle.classList.add('menu_button');
+                        bookSortToggle.classList.add('stwid--bookSortToggle');
+                        const icon = document.createElement('i'); {
+                            icon.classList.add('fa-solid', 'fa-fw');
+                            bookSortToggle.append(icon);
+                        }
+                        const txt = document.createElement('span'); {
+                            txt.classList.add('stwid--label');
+                            bookSortToggle.append(txt);
+                        }
+                        const updateToggleState = ()=>{
+                            const enabled = Settings.instance.useBookSorts;
+                            bookSortToggle.classList.toggle('stwid--active', enabled);
+                            bookSortToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                            icon.classList.toggle('fa-toggle-on', enabled);
+                            icon.classList.toggle('fa-toggle-off', !enabled);
+                            txt.textContent = enabled ? 'Per-book sort: On' : 'Per-book sort: Off';
+                        };
+                        updateToggleState();
+                        bookSortToggle.addEventListener('click', ()=>{
+                            Settings.instance.useBookSorts = !Settings.instance.useBookSorts;
+                            Settings.instance.save();
+                            updateToggleState();
+                            for (const name of Object.keys(cache)) {
+                                sortEntriesIfNeeded(name);
+                            }
+                        });
+                        controlsSecondary.append(bookSortToggle);
+                    }
+                    const clearBookSorts = document.createElement('button'); {
+                        clearBookSorts.type = 'button';
+                        clearBookSorts.classList.add('menu_button');
+                        clearBookSorts.classList.add('stwid--clearBookSorts');
+                        const icon = document.createElement('i'); {
+                            icon.classList.add('fa-solid', 'fa-fw', 'fa-broom');
+                            clearBookSorts.append(icon);
+                        }
+                        const txt = document.createElement('span'); {
+                            txt.classList.add('stwid--label');
+                            txt.textContent = 'Clear All Preferences';
+                            clearBookSorts.append(txt);
+                        }
+                        clearBookSorts.addEventListener('click', async()=>{
+                            clearBookSorts.disabled = true;
+                            try {
+                                await clearBookSortPreferences();
+                            } finally {
+                                clearBookSorts.disabled = false;
+                            }
+                        });
+                        controlsSecondary.append(clearBookSorts);
+                    }
+                    controls.append(controlsPrimary, controlsSecondary);
                     list.append(controls);
                 }
                 const filter = document.createElement('div'); {
