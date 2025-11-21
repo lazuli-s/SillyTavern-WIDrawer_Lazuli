@@ -59,12 +59,16 @@ body.stwid-- #WorldInfo {
                                 align-items: center;
                                 flex-wrap: wrap;
 
+                                &.stwid--orderControls {
+                                        flex-wrap: nowrap;
+                                }
+
                                 .stwid--bookSortToggle,
                                 .stwid--clearBookSorts {
                                         display: inline-flex;
                                         align-items: center;
-                                        gap: 0.35em;
-                                        padding: 0.2em 0.5em;
+                                        justify-content: center;
+                                        padding: 0.35em;
                                         min-height: 1.85em;
                                 }
                         }

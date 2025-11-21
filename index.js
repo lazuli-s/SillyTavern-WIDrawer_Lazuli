@@ -1870,7 +1870,7 @@ const addDrawer = ()=>{
                         controlsPrimary.append(order);
                     }
                     const controlsSecondary = document.createElement('div');
-                    controlsSecondary.classList.add('stwid--controlsRow');
+                    controlsSecondary.classList.add('stwid--controlsRow', 'stwid--orderControls');
                     const sortSel = document.createElement('select'); {
                         sortSel.classList.add('text_pole');
                         sortSel.addEventListener('change', ()=>{
@@ -1893,17 +1893,15 @@ const addDrawer = ()=>{
                             icon.classList.add('fa-solid', 'fa-fw');
                             bookSortToggle.append(icon);
                         }
-                        const txt = document.createElement('span'); {
-                            txt.classList.add('stwid--label');
-                            bookSortToggle.append(txt);
-                        }
                         const updateToggleState = ()=>{
                             const enabled = Settings.instance.useBookSorts;
                             bookSortToggle.classList.toggle('stwid--active', enabled);
                             bookSortToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
                             icon.classList.toggle('fa-toggle-on', enabled);
                             icon.classList.toggle('fa-toggle-off', !enabled);
-                            txt.textContent = enabled ? 'Per-book sort: On' : 'Per-book sort: Off';
+                            const label = enabled ? 'Per-book sort: On' : 'Per-book sort: Off';
+                            bookSortToggle.title = label;
+                            bookSortToggle.setAttribute('aria-label', label);
                         };
                         updateToggleState();
                         bookSortToggle.addEventListener('click', ()=>{
@@ -1924,11 +1922,8 @@ const addDrawer = ()=>{
                             icon.classList.add('fa-solid', 'fa-fw', 'fa-broom');
                             clearBookSorts.append(icon);
                         }
-                        const txt = document.createElement('span'); {
-                            txt.classList.add('stwid--label');
-                            txt.textContent = 'Clear All Preferences';
-                            clearBookSorts.append(txt);
-                        }
+                        clearBookSorts.title = 'Clear All Preferences';
+                        clearBookSorts.setAttribute('aria-label', 'Clear All Preferences');
                         clearBookSorts.addEventListener('click', async()=>{
                             clearBookSorts.disabled = true;
                             try {

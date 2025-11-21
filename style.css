@@ -54,12 +54,15 @@ body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow {
   align-items: center;
   flex-wrap: wrap;
 }
+body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--orderControls {
+  flex-wrap: nowrap;
+}
 body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow .stwid--bookSortToggle,
 body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--controlsRow .stwid--clearBookSorts {
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
-  padding: 0.2em 0.5em;
+  justify-content: center;
+  padding: 0.35em;
   min-height: 1.85em;
 }
 body.stwid-- #WorldInfo .stwid--list .stwid--controls .stwid--active {
